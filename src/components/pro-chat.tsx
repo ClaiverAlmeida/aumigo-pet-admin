@@ -171,7 +171,7 @@ const generateMockConversations = (): Conversation[] => {
     lastMessage: {
       id: index + 100,
       text: [
-        "Obrigada pelo excelente serviço! A Luna adorou o banho 🐕",
+        "Obrigada pelo excelente serviço! A Luna adorou a consulta veterinária 🐕",
         "Qual horário você tem disponível amanhã para o Rex?",
         "Perfeito! Agendado para quinta-feira às 15h",
         "Posso agendar consulta veterinária para o Buddy?",
@@ -198,12 +198,12 @@ const generateMockMessages = (conversationId: number): Message[] => {
   const messageTemplates = [
     // Conversa 1 - Ana Clara
     [
-      { text: "Olá! Gostaria de agendar um banho para a Luna", isFromMe: false, hours: 8 },
+      { text: "Olá! Gostaria de agendar uma consulta veterinária para a Luna", isFromMe: false, hours: 8 },
       { text: "Olá Ana! Claro, posso sim. Que dia seria melhor para você?", isFromMe: true, hours: 7 },
       { text: "Seria possível na sexta-feira pela manhã?", isFromMe: false, hours: 6 },
       { text: "Perfeito! Tenho disponibilidade às 10h. Confirmo para você?", isFromMe: true, hours: 5 },
       { text: "Sim, por favor! A Luna vai adorar ❤️", isFromMe: false, hours: 4 },
-      { text: "Agendamento confirmado! Sexta-feira às 10h para banho e tosa da Luna. Até lá! 🐕✨", isFromMe: true, hours: 3 },
+      { text: "Agendamento confirmado! Sexta-feira às 10h para consulta veterinária com Dr. Ana da Luna. Até lá! 🐕✨", isFromMe: true, hours: 3 },
       { text: "Obrigada pelo excelente serviço! A Luna adorou o banho 🐕", isFromMe: false, hours: 0.5 }
     ],
     // Conversa 2 - Carlos Eduardo

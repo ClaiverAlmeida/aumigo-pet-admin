@@ -58,7 +58,7 @@ const mockBookings: Booking[] = [
     tutorEmail: 'joao@email.com',
     petName: 'Max',
     petBreed: 'Golden Retriever',
-    service: 'Banho & Tosa',
+    service: 'Dr. Ana Veterinária',
     date: '2025-09-06',
     time: '09:00',
     status: 'PENDING',
@@ -67,7 +67,7 @@ const mockBookings: Booking[] = [
       street: 'Rua das Flores, 123',
       city: 'São Paulo - SP'
     },
-    notes: 'Pet muito dócil, primeira vez no banho',
+    notes: 'Pet muito dócil, primeira vez na consulta veterinária',
     createdAt: '2025-09-05'
   },
   {

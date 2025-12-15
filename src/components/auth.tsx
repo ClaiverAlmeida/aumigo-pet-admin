@@ -95,7 +95,7 @@ export function Auth({ onLogin }: AuthProps) {
       // Mock de dados do usuário
       const userData = {
         id: '1',
-        name: 'Maria Souza',
+        name: 'Claiver Almeida',
         email: loginData.email,
         phone: '(11) 99999-9999',
         avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',

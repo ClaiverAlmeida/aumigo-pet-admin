@@ -37,7 +37,7 @@ const reviewsData = [
       avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face",
       pets: ["Luna", "Bella"]
     },
-    service: "Banho e Tosa",
+    service: "Dr. Ana Veterinária",
     rating: 5,
     date: new Date(2025, 0, 15),
     comment: "Excelente profissional! Minha Luna ficou linda e cheirosa. O cuidado e carinho com os animais é notável. Super recomendo!",
@@ -103,7 +103,7 @@ const reviewsData = [
       avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=40&h=40&fit=crop&crop=face",
       pets: ["Princesa"]
     },
-    service: "Banho e Tosa",
+    service: "Dr. Ana Veterinária",
     rating: 3,
     date: new Date(2025, 0, 5),
     comment: "O serviço foi ok, mas demorou mais que o esperado. A Princesa ficou bem, mas esperava um resultado melhor no corte.",
@@ -240,7 +240,7 @@ function ReviewCard({ review, onReply }: { review: any; onReply: (id: number) =>
                   <AvatarImage src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face" />
                   <AvatarFallback>MS</AvatarFallback>
                 </Avatar>
-                <span className="text-sm font-medium text-[#2E6F79]">Maria Souza</span>
+                <span className="text-sm font-medium text-[#2E6F79]">Claiver Almeida</span>
                 <Badge variant="secondary" className="text-xs bg-[#FF9B57] text-white">Profissional</Badge>
                 <span className="text-xs text-[#6B7280] ml-auto">
                   {review.response.date.toLocaleDateString('pt-BR')}
@@ -387,7 +387,7 @@ export function ProReviews() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os serviços</SelectItem>
-                <SelectItem value="Banho e Tosa">Banho e Tosa</SelectItem>
+                <SelectItem value="Dr. Ana Veterinária">Dr. Ana Veterinária</SelectItem>
                 <SelectItem value="Consulta Veterinária">Consulta Veterinária</SelectItem>
                 <SelectItem value="Adestramento">Adestramento</SelectItem>
                 <SelectItem value="Vacinação">Vacinação</SelectItem>

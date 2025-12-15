@@ -92,7 +92,7 @@ export function ProSettings() {
   const [activeTab, setActiveTab] = useState('profile')
   const [showPassword, setShowPassword] = useState(false)
   const [profileData, setProfileData] = useState<ProfileData>({
-    name: 'Maria Souza',
+    name: 'Claiver Almeida',
     email: 'maria.souza@email.com',
     phone: '(11) 99999-9999',
     bio: 'Profissional dedicada ao cuidado de pets há mais de 8 anos. Especializada em banho, tosa e adestramento.',
@@ -500,7 +500,7 @@ export function ProSettings() {
                       onClick={() => {
                         // Reset para valores originais
                         setProfileData({
-                          name: 'Maria Souza',
+                          name: 'Claiver Almeida',
                           email: 'maria.souza@email.com',
                           phone: '(11) 99999-9999',
                           bio: 'Profissional dedicada ao cuidado de pets há mais de 8 anos. Especializada em banho, tosa e adestramento.',

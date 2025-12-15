@@ -41,9 +41,9 @@ interface Service {
 const mockServices: Service[] = [
   {
     id: '1',
-    title: 'Banho & Tosa Completo',
+    title: 'Dr. Ana Veterinária',
     category: 'banho_tosa',
-    description: 'Banho com produtos premium, tosa higiênica, corte de unhas e limpeza de ouvido',
+    description: 'Consulta veterinária completa com exame clínico, vacinação e orientações de saúde',
     priceCents: 8000,
     durationMin: 120,
     active: true,
@@ -378,7 +378,7 @@ function ServiceDialog({ service, onSave, onClose }: ServiceDialogProps) {
               id="title"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Ex: Banho & Tosa Completo"
+              placeholder="Ex: Dr. Ana Veterinária"
               required
             />
           </div>

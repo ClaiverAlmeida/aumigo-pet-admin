@@ -54,7 +54,7 @@ const upcomingBookings = [
   {
     id: 1,
     time: '09:00',
-    service: 'Banho & Tosa',
+    service: 'Dr. Ana Veterinária',
     pet: 'Max',
     tutor: 'João Silva',
     avatar: 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=40&h=40&fit=crop&crop=face'

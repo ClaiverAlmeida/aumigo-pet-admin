@@ -81,7 +81,7 @@ const mockTransactions: Transaction[] = [
     id: '1',
     bookingId: 'BK001',
     customerName: 'João Silva',
-    service: 'Banho & Tosa',
+    service: 'Dr. Ana Veterinária',
     amount: 8000,
     fee: 800,
     netAmount: 7200,
@@ -427,7 +427,7 @@ export function ProFinance() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm">Banho & Tosa</span>
+                  <span className="text-sm">Dr. Ana Veterinária</span>
                   <div className="flex items-center gap-2">
                     <div className="w-12 bg-muted rounded-full h-2">
                       <div className="w-8/12 bg-blue-600 h-2 rounded-full"></div>

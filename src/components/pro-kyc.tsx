@@ -53,10 +53,10 @@ interface ProfessionalProfile {
 }
 
 const mockProfile: ProfessionalProfile = {
-  name: 'Maria Souza',
+  name: 'Claiver Almeida',
   email: 'maria@email.com', 
   phone: '(11) 99999-9999',
-  bio: 'Profissional especializada em banho e tosa com 5 anos de experiência. Trabalho com muito carinho e dedicação para o bem-estar dos pets.',
+  bio: 'Veterinária especializada com 5 anos de experiência. Trabalho com muito carinho e dedicação para o bem-estar dos pets.',
   cnpj: '12.345.678/0001-90',
   avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
   address: {
