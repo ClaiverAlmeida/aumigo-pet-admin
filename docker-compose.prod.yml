@@ -1,0 +1,26 @@
+services:
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_URL: https://api.aumigopet.com.br
+    container_name: aumigo-pet-admin
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    networks:
+      - app-net-aumigopet
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "project=aumigo-pet-admin"
+      - "environment=production"
+
+networks:
+  app-net-aumigopet:
+    external: true
