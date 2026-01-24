@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { motion } from 'motion/react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -7,8 +8,10 @@ import { Separator } from './ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import { Alert, AlertDescription } from './ui/alert'
 import { Checkbox } from './ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
+import { RadioGroup, RadioGroupItem } from './ui/radio-group'
 import { ImageWithFallback } from './figma/ImageWithFallback'
-import exampleImage from 'figma:asset/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
+import exampleImage from '../assets/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
 import {
   Eye,
   EyeOff,
@@ -24,20 +27,27 @@ import {
   PawPrint,
   Star,
   Heart,
-  Scissors
+  Scissors,
+  Globe,
+  FileText,
+  Loader2
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuth } from '../contexts/AuthContext'
 
 interface AuthProps {
   onLogin: (userData: any) => void
 }
 
 export function Auth({ onLogin }: AuthProps) {
+  const { signIn, signUpPro } = useAuth()
   const [currentTab, setCurrentTab] = useState('login')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [step, setStep] = useState(1) // Para cadastro em etapas
+  const [error, setError] = useState('') // Estado para mensagem de erro
+  const [loadingCep, setLoadingCep] = useState(false)
 
   // Estados do formulário de login
   const [loginData, setLoginData] = useState({
@@ -55,10 +65,17 @@ export function Auth({ onLogin }: AuthProps) {
     password: '',
     confirmPassword: '',
     // Etapa 2 - Informações profissionais
+    businessType: 'empresa' as 'empresa' | 'autonomo',
     business: '',
+    cnpj: '',
+    website: '',
+    zipCode: '',
+    address: '',
+    addressNumber: '',
+    city: '',
+    state: '',
     specialty: '',
     experience: '',
-    location: '',
     // Etapa 3 - Termos
     acceptTerms: false,
     acceptMarketing: false
@@ -70,44 +87,69 @@ export function Auth({ onLogin }: AuthProps) {
   })
 
   const specialties = [
-    { value: 'veterinario', label: 'Veterinário(a)', icon: Heart },
-    { value: 'banho_tosa', label: 'Banho e Tosa', icon: Scissors },
-    { value: 'adestramento', label: 'Adestramento', icon: Star },
-    { value: 'hospedagem', label: 'Hospedagem', icon: PawPrint },
-    { value: 'outros', label: 'Outros Serviços', icon: Building }
+    // Alinhado com enum ServiceCategory (prisma/schema.prisma)
+    { value: 'VETERINARY', label: 'Veterinário', icon: Heart },
+    { value: 'HOSPITAL', label: 'Emergência', icon: Heart },
+    { value: 'GROOMING', label: 'Banho e Tosa', icon: Scissors },
+    { value: 'TRAINING', label: 'Adestramento', icon: Star },
+    { value: 'WALKER', label: 'Passeador', icon: PawPrint },
+    { value: 'HOTEL', label: 'Hotel para Pets', icon: PawPrint },
+    { value: 'PET_SHOP', label: 'Pet Shop', icon: Building },
+    { value: 'FARMACY', label: 'Farmácia', icon: Building },
+    { value: 'OTHER', label: 'Outro', icon: Building },
   ]
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('') // Limpar erro anterior
     
     if (!loginData.email || !loginData.password) {
-      toast.error('Preencha todos os campos obrigatórios')
+      setError('Preencha todos os campos obrigatórios')
       return
     }
 
     setIsLoading(true)
     toast.loading('Fazendo login...', { id: 'auth-loading' })
 
-    // Simular API call
-    setTimeout(() => {
+    try {
+      // Usar contexto de autenticação - Seguindo padrão do app
+      const result = await signIn(loginData.email, loginData.password)
+
       toast.dismiss('auth-loading')
-      
-      // Mock de dados do usuário
-      const userData = {
-        id: '1',
-        name: 'Claiver Almeida',
-        email: loginData.email,
-        phone: '(11) 99999-9999',
-        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-        specialty: 'banho_tosa',
-        kycStatus: 'APPROVED',
-        isFirstLogin: false
+
+      if (result.success) {
+        setIsLoading(false)
+        setError('') // Limpar erro em caso de sucesso
+        toast.success('Login realizado com sucesso! 🎉')
+        
+        // Mapear dados para o formato esperado pelo onLogin
+        const storedUser = localStorage.getItem('aumigopet_user')
+        if (storedUser) {
+          const userData = JSON.parse(storedUser)
+          onLogin({
+            id: userData.id,
+            name: userData.name,
+            email: userData.email,
+            phone: userData.phone || '',
+            avatar: userData.avatar || '',
+            specialty: userData.specialty || 'OTHER',
+            kycStatus: userData.kycStatus || 'PENDING',
+            isFirstLogin: userData.isFirstLogin || false
+          })
+        }
+      } else {
+        setIsLoading(false)
+        const errorMsg = result.error || 'Erro ao fazer login'
+        setError(errorMsg)
+        toast.error(errorMsg)
       }
-      
+    } catch (error: any) {
+      toast.dismiss('auth-loading')
       setIsLoading(false)
-      toast.success('Login realizado com sucesso! 🎉')
-      onLogin(userData)
-    }, 2000)
+      const errorMsg = error.message || 'Erro ao fazer login'
+      setError(errorMsg)
+      toast.error(errorMsg)
+    }
   }
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -137,8 +179,60 @@ export function Auth({ onLogin }: AuthProps) {
     
     if (step === 2) {
       // Validação da etapa 2
-      if (!signupData.business || !signupData.specialty || !signupData.location) {
+      if (!signupData.business) {
         toast.error('Preencha todos os campos obrigatórios')
+        return
+      }
+      
+      // Validação de documento (CNPJ ou CPF)
+      if (!signupData.cnpj) {
+        toast.error(signupData.businessType === 'empresa' ? 'CNPJ é obrigatório' : 'CPF é obrigatório')
+        return
+      }
+
+      // Validação para empresa: tudo obrigatório (exceto site)
+      if (signupData.businessType === 'empresa') {
+        if (!signupData.zipCode) {
+          toast.error('CEP é obrigatório para empresas')
+          return
+        }
+        if (!signupData.address) {
+          toast.error('Endereço é obrigatório para empresas')
+          return
+        }
+        if (!signupData.addressNumber) {
+          toast.error('Número do endereço é obrigatório para empresas')
+          return
+        }
+        if (!signupData.city) {
+          toast.error('Cidade é obrigatória para empresas')
+          return
+        }
+        if (!signupData.state) {
+          toast.error('Estado é obrigatório para empresas')
+          return
+        }
+      }
+
+      // Validação para autônomo: cidade e UF obrigatórios
+      if (signupData.businessType === 'autonomo') {
+        if (!signupData.city) {
+          toast.error('Cidade é obrigatória')
+          return
+        }
+        if (!signupData.state) {
+          toast.error('Estado é obrigatório')
+          return
+        }
+      }
+
+      // Validação de especialidade e experiência (obrigatórios para todos)
+      if (!signupData.specialty) {
+        toast.error('Especialidade é obrigatória')
+        return
+      }
+      if (!signupData.experience) {
+        toast.error('Experiência é obrigatória')
         return
       }
       
@@ -155,26 +249,54 @@ export function Auth({ onLogin }: AuthProps) {
       
       setIsLoading(true)
       toast.loading('Criando sua conta...', { id: 'signup-loading' })
-      
-      // Simular API call
-      setTimeout(() => {
-        toast.dismiss('signup-loading')
-        
-        const userData = {
-          id: '1',
+
+      try {
+        const result = await signUpPro({
           name: signupData.name,
           email: signupData.email,
           phone: signupData.phone,
-          avatar: '',
-          specialty: signupData.specialty,
-          kycStatus: 'PENDING',
-          isFirstLogin: true
+          password: signupData.password,
+          businessName: signupData.business,
+          cnpj: signupData.cnpj || undefined,
+          website: signupData.businessType === 'empresa' ? signupData.website : undefined,
+          zipCode: signupData.zipCode || undefined,
+          address: signupData.address || undefined,
+          addressNumber: signupData.addressNumber || undefined,
+          city: signupData.city || undefined,
+          state: signupData.state || undefined,
+        })
+
+        toast.dismiss('signup-loading')
+
+        if (!result.success) {
+          setIsLoading(false)
+          toast.error(result.error || 'Erro ao criar conta')
+          return
         }
-        
+
+        // Mapear dados para o formato esperado pelo onLogin
+        const storedUser = localStorage.getItem('aumigopet_user')
+        if (storedUser) {
+          const userData = JSON.parse(storedUser)
+          onLogin({
+            id: userData.id,
+            name: userData.name,
+            email: userData.email,
+            phone: userData.phone || '',
+            avatar: userData.avatar || '',
+            specialty: userData.specialty || 'OTHER',
+            kycStatus: userData.kycStatus || 'PENDING',
+            isFirstLogin: userData.isFirstLogin || true,
+          })
+        }
+
         setIsLoading(false)
         toast.success('Conta criada com sucesso! Complete seu perfil para começar. 🎉')
-        onLogin(userData)
-      }, 2500)
+      } catch (error: any) {
+        toast.dismiss('signup-loading')
+        setIsLoading(false)
+        toast.error(error?.message || 'Erro ao criar conta')
+      }
     }
   }
 
@@ -197,6 +319,39 @@ export function Auth({ onLogin }: AuthProps) {
     }, 2000)
   }
 
+  // Função para buscar endereço pelo CEP (ViaCEP)
+  const handleCepChange = async (cep: string) => {
+    const cleanCep = cep.replace(/\D/g, '')
+    
+    if (cleanCep.length === 8) {
+      setLoadingCep(true)
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`)
+        const data = await response.json()
+        
+        if (!data.erro) {
+          setSignupData(prev => ({
+            ...prev,
+            zipCode: cleanCep.replace(/(\d{5})(\d{3})/, '$1-$2'),
+            address: data.logradouro || '',
+            city: data.localidade || '',
+            state: data.uf || '',
+            // Não preenchemos addressNumber automaticamente, usuário deve informar
+          }))
+          toast.success('Endereço encontrado!')
+        } else {
+          toast.error('CEP não encontrado')
+        }
+      } catch (error) {
+        toast.error('Erro ao buscar CEP')
+      } finally {
+        setLoadingCep(false)
+      }
+    } else {
+      setSignupData(prev => ({ ...prev, zipCode: cep }))
+    }
+  }
+
   const resetSignupStep = () => {
     setStep(1)
     setSignupData({
@@ -205,10 +360,17 @@ export function Auth({ onLogin }: AuthProps) {
       phone: '',
       password: '',
       confirmPassword: '',
+      businessType: 'empresa',
       business: '',
+      cnpj: '',
+      website: '',
+      zipCode: '',
+      address: '',
+      addressNumber: '',
+      city: '',
+      state: '',
       specialty: '',
       experience: '',
-      location: '',
       acceptTerms: false,
       acceptMarketing: false
     })
@@ -230,7 +392,7 @@ export function Auth({ onLogin }: AuthProps) {
               <img 
                 src={exampleImage} 
                 alt="AuMigoPet" 
-                className="h-20 w-auto mx-auto brightness-0 invert"
+                className="h-20 w-auto mx-auto "
               />
               <h1 style={{ color: 'white', fontSize: '1.875rem', fontWeight: '600', marginBottom: '1rem' }}>
                 AuMigoPet PRO
@@ -249,17 +411,17 @@ export function Auth({ onLogin }: AuthProps) {
                 <CheckCircle className="h-6 w-6 flex-shrink-0" style={{ color: 'rgb(141, 217, 182)' }} />
                 <span style={{ fontSize: '1.125rem' }}>Sistema de pagamentos integrado</span>
               </div>
-              <div className="flex items-center gap-4" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+              {/* <div className="flex items-center gap-4" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
                 <CheckCircle className="h-6 w-6 flex-shrink-0" style={{ color: 'rgb(141, 217, 182)' }} />
                 <span style={{ fontSize: '1.125rem' }}>Chat em tempo real com clientes</span>
-              </div>
+              </div> */}
               <div className="flex items-center gap-4" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
                 <CheckCircle className="h-6 w-6 flex-shrink-0" style={{ color: 'rgb(141, 217, 182)' }} />
                 <span style={{ fontSize: '1.125rem' }}>Avaliações e feedback dos tutores</span>
               </div>
             </div>
 
-            <div 
+            {/* <div 
               className="mt-10 p-6 rounded-2xl backdrop-blur-sm"
               style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
             >
@@ -281,7 +443,7 @@ export function Auth({ onLogin }: AuthProps) {
                   +
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Lado direito - Formulários */}
@@ -311,6 +473,7 @@ export function Auth({ onLogin }: AuthProps) {
               <CardContent className="space-y-6 px-8 pb-8">
                 <Tabs value={currentTab} onValueChange={(value) => {
                   setCurrentTab(value)
+                  setError('') // Limpar erro ao trocar de aba
                   if (value === 'signup') resetSignupStep()
                 }}>
                   <TabsList className="grid w-full grid-cols-2 mb-8 h-12">
@@ -331,6 +494,26 @@ export function Auth({ onLogin }: AuthProps) {
                   {/* Login Tab */}
                   <TabsContent value="login" className="space-y-6">
                     <form onSubmit={handleLogin} className="space-y-6">
+                      {/* Mensagem de erro animada */}
+                      {error && (
+                        <motion.div 
+                          className="px-4 py-3 rounded-xl mb-4"
+                          style={{
+                            backgroundColor: '#fef2f2',
+                            border: '1px solid #fecaca',
+                            color: '#b91c1c'
+                          }}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <p className="text-sm flex items-center gap-2" style={{ color: '#b91c1c' }}>
+                            <AlertCircle className="h-4 w-4" style={{ color: '#dc2626' }} />
+                            {error}
+                          </p>
+                        </motion.div>
+                      )}
+                      
                       <div className="space-y-3">
                         <label htmlFor="login-email" style={{ color: 'rgb(46, 111, 121)', fontSize: '0.875rem', fontWeight: '500' }}>
                           E-mail
@@ -348,7 +531,10 @@ export function Auth({ onLogin }: AuthProps) {
                               backgroundColor: 'white'
                             }}
                             value={loginData.email}
-                            onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                            onChange={(e) => {
+                              setLoginData({ ...loginData, email: e.target.value })
+                              setError('') // Limpar erro ao começar a digitar
+                            }}
                             required
                           />
                         </div>
@@ -371,7 +557,10 @@ export function Auth({ onLogin }: AuthProps) {
                               backgroundColor: 'white'
                             }}
                             value={loginData.password}
-                            onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                            onChange={(e) => {
+                              setLoginData({ ...loginData, password: e.target.value })
+                              setError('') // Limpar erro ao começar a digitar
+                            }}
                             required
                           />
                           <button
@@ -591,7 +780,6 @@ export function Auth({ onLogin }: AuthProps) {
                               </div>
                             </div>
                           </div>
-
                           <div className="space-y-2">
                             <Label htmlFor="business-name">Nome do negócio</Label>
                             <div className="relative">
@@ -599,7 +787,7 @@ export function Auth({ onLogin }: AuthProps) {
                               <Input
                                 id="business-name"
                                 type="text"
-                                placeholder="Nome da sua empresa/clínica"
+                                placeholder="Ex: Clínica Pet, João Veterinário, Pet Shop Central..."
                                 className="pl-10 border-aumigo-gray/30 focus:border-aumigo-orange"
                                 value={signupData.business}
                                 onChange={(e) => setSignupData({ ...signupData, business: e.target.value })}
@@ -607,49 +795,208 @@ export function Auth({ onLogin }: AuthProps) {
                               />
                             </div>
                           </div>
-
                           <div className="space-y-2">
-                            <Label>Especialidade principal</Label>
-                            <div className="grid grid-cols-1 gap-2">
-                              {specialties.map((specialty) => {
-                                const Icon = specialty.icon
-                                return (
-                                  <button
-                                    key={specialty.value}
-                                    type="button"
-                                    className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                                      signupData.specialty === specialty.value
-                                        ? 'border-aumigo-orange bg-aumigo-orange/10 text-aumigo-orange'
-                                        : 'border-aumigo-gray/30 hover:border-aumigo-orange/50'
-                                    }`}
-                                    onClick={() => setSignupData({ ...signupData, specialty: specialty.value })}
-                                  >
-                                    <Icon className="h-5 w-5" />
-                                    <span>{specialty.label}</span>
-                                  </button>
-                                )
-                              })}
+                            <Label>Tipo de negócio</Label>
+                            <RadioGroup
+                              value={signupData.businessType}
+                              onValueChange={(value) => setSignupData({ ...signupData, businessType: value as 'empresa' | 'autonomo', cnpj: '', website: '' })}
+                              className="flex gap-4"
+                            >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="empresa" id="empresa" />
+                              <Label htmlFor="empresa" className="font-normal cursor-pointer">
+                                Empresa (com CNPJ)
+                              </Label>
                             </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="autonomo" id="autonomo" />
+                                <Label htmlFor="autonomo" className="font-normal cursor-pointer">
+                                  Prestador autônomo
+                                </Label>
+                              </div>
+                            </RadioGroup>
                           </div>
 
+                          
+
                           <div className="space-y-2">
-                            <Label htmlFor="location">Localização</Label>
+                            <Label htmlFor="cnpj">
+                              {signupData.businessType === 'empresa' ? 'CNPJ' : 'CPF'} <span className="text-red-500">*</span>
+                            </Label>
                             <div className="relative">
-                              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-aumigo-gray" />
+                              <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-aumigo-gray" />
                               <Input
-                                id="location"
+                                id="cnpj"
                                 type="text"
-                                placeholder="Cidade, Estado"
+                                placeholder={signupData.businessType === 'empresa' ? '00.000.000/0000-00' : '000.000.000-00'}
+                                maxLength={signupData.businessType === 'empresa' ? 18 : 14}
                                 className="pl-10 border-aumigo-gray/30 focus:border-aumigo-orange"
-                                value={signupData.location}
-                                onChange={(e) => setSignupData({ ...signupData, location: e.target.value })}
+                                value={signupData.cnpj}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/\D/g, '')
+                                  let formatted = ''
+                                  if (signupData.businessType === 'empresa') {
+                                    // Máscara CNPJ: 00.000.000/0000-00
+                                    formatted = value.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
+                                  } else {
+                                    // Máscara CPF: 000.000.000-00
+                                    formatted = value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+                                  }
+                                  setSignupData({ ...signupData, cnpj: formatted })
+                                }}
                                 required
                               />
                             </div>
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="experience">Experiência (anos)</Label>
+                            <Label htmlFor="website">Site (opcional)</Label>
+                            <div className="relative">
+                              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-aumigo-gray" />
+                              <Input
+                                id="website"
+                                type="url"
+                                placeholder="https://www.exemplo.com.br"
+                                className="pl-10 border-aumigo-gray/30 focus:border-aumigo-orange"
+                                value={signupData.website}
+                                onChange={(e) => setSignupData({ ...signupData, website: e.target.value })}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="zipCode">
+                              CEP {signupData.businessType === 'empresa' && <span className="text-red-500">*</span>}
+                            </Label>
+                            <div className="relative">
+                              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-aumigo-gray" />
+                              <Input
+                                id="zipCode"
+                                type="text"
+                                placeholder="00000-000"
+                                maxLength={9}
+                                className="pl-10 pr-10 border-aumigo-gray/30 focus:border-aumigo-orange"
+                                value={signupData.zipCode}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/\D/g, '')
+                                  const formatted = value.replace(/(\d{5})(\d{3})/, '$1-$2')
+                                  handleCepChange(value)
+                                }}
+                                required={signupData.businessType === 'empresa'}
+                              />
+                              {loadingCep && (
+                                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-aumigo-gray animate-spin" />
+                              )}
+                            </div>
+                            <p className="text-xs text-aumigo-gray">
+                              Digite o CEP para preencher automaticamente o endereço
+                            </p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="address">
+                              Endereço (rua, bairro) {signupData.businessType === 'empresa' && <span className="text-red-500">*</span>}
+                            </Label>
+                            <div className="relative">
+                              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-aumigo-gray" />
+                              <Input
+                                id="address"
+                                type="text"
+                                placeholder="Rua, bairro"
+                                className="pl-10 border-aumigo-gray/30 focus:border-aumigo-orange"
+                                value={signupData.address}
+                                onChange={(e) => setSignupData({ ...signupData, address: e.target.value })}
+                                required={signupData.businessType === 'empresa'}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="addressNumber">
+                              Número {signupData.businessType === 'empresa' && <span className="text-red-500">*</span>}
+                            </Label>
+                            <Input
+                              id="addressNumber"
+                              type="text"
+                              placeholder="123"
+                              className="border-aumigo-gray/30 focus:border-aumigo-orange"
+                              value={signupData.addressNumber}
+                              onChange={(e) => setSignupData({ ...signupData, addressNumber: e.target.value })}
+                              required={signupData.businessType === 'empresa'}
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="city">
+                                Cidade <span className="text-red-500">*</span>
+                              </Label>
+                              <Input
+                                id="city"
+                                type="text"
+                                placeholder="Cidade"
+                                className="border-aumigo-gray/30 focus:border-aumigo-orange"
+                                value={signupData.city}
+                                onChange={(e) => setSignupData({ ...signupData, city: e.target.value })}
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="state">
+                                Estado <span className="text-red-500">*</span>
+                              </Label>
+                              <Input
+                                id="state"
+                                type="text"
+                                placeholder="UF"
+                                maxLength={2}
+                                className="border-aumigo-gray/30 focus:border-aumigo-orange"
+                                value={signupData.state}
+                                onChange={(e) => setSignupData({ ...signupData, state: e.target.value.toUpperCase() })}
+                                required
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="specialty">
+                              Especialidade principal <span className="text-red-500">*</span>
+                            </Label>
+                            <Select
+                              value={signupData.specialty || ''}
+                              onValueChange={(value) => setSignupData({ ...signupData, specialty: value })}
+                              required
+                            >
+                              <SelectTrigger 
+                                id="specialty"
+                                className="border-aumigo-gray/30 focus:border-aumigo-orange"
+                              >
+                                <SelectValue placeholder="Selecione uma especialidade" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {specialties.map((specialty) => {
+                                  const Icon = specialty.icon
+                                  return (
+                                    <SelectItem key={specialty.value} value={specialty.value}>
+                                      <div className="flex items-center gap-2">
+                                        <Icon className="h-4 w-4" />
+                                        <span>{specialty.label}</span>
+                                      </div>
+                                    </SelectItem>
+                                  )
+                                })}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-aumigo-gray">
+                              Você poderá adicionar mais serviços depois no catálogo
+                            </p>
+                          </div>
+
+
+                          <div className="space-y-2">
+                            <Label htmlFor="experience">
+                              Experiência (anos) <span className="text-red-500">*</span>
+                            </Label>
                             <Input
                               id="experience"
                               type="number"
@@ -657,6 +1004,8 @@ export function Auth({ onLogin }: AuthProps) {
                               className="border-aumigo-gray/30 focus:border-aumigo-orange"
                               value={signupData.experience}
                               onChange={(e) => setSignupData({ ...signupData, experience: e.target.value })}
+                              required
+                              min="0"
                             />
                           </div>
                         </>

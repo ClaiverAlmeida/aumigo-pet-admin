@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
@@ -14,8 +14,11 @@ import {
   Trash2, 
   Calendar as CalendarIcon,
   Save,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react'
+import { openingHoursService, WeeklyAvailability as BackendWeeklyAvailability } from '../services/opening-hours.service'
+import { toast } from 'sonner'
 
 interface TimeSlot {
   start: string
@@ -45,26 +48,103 @@ const weekDays = [
   { id: 0, name: 'Domingo', short: 'Dom' }
 ]
 
-const mockAvailability: WeeklyAvailability = {
-  1: { active: true, slots: [{ start: '08:00', end: '12:00' }, { start: '14:00', end: '18:00' }] },
-  2: { active: true, slots: [{ start: '08:00', end: '12:00' }, { start: '14:00', end: '18:00' }] },
-  3: { active: true, slots: [{ start: '08:00', end: '12:00' }, { start: '14:00', end: '18:00' }] },
-  4: { active: true, slots: [{ start: '08:00', end: '12:00' }, { start: '14:00', end: '18:00' }] },
-  5: { active: true, slots: [{ start: '08:00', end: '12:00' }, { start: '14:00', end: '18:00' }] },
-  6: { active: true, slots: [{ start: '08:00', end: '14:00' }] },
-  0: { active: false, slots: [] }
-}
-
-const mockExceptions: Exception[] = [
-  { date: '2025-09-15', off: true, reason: 'Feriado Nacional' },
-  { date: '2025-09-20', off: true, reason: 'Férias pessoais' }
-]
+// Estrutura vazia padrão
+const getEmptyAvailability = (): WeeklyAvailability => ({
+  0: { active: false, slots: [] }, // Domingo
+  1: { active: false, slots: [] }, // Segunda
+  2: { active: false, slots: [] }, // Terça
+  3: { active: false, slots: [] }, // Quarta
+  4: { active: false, slots: [] }, // Quinta
+  5: { active: false, slots: [] }, // Sexta
+  6: { active: false, slots: [] }, // Sábado
+})
 
 export function ProAvailability() {
-  const [availability, setAvailability] = useState<WeeklyAvailability>(mockAvailability)
-  const [exceptions, setExceptions] = useState<Exception[]>(mockExceptions)
+  const [availability, setAvailability] = useState<WeeklyAvailability>(getEmptyAvailability())
+  const [exceptions, setExceptions] = useState<Exception[]>([])
   const [selectedDate, setSelectedDate] = useState<Date>()
   const [isExceptionDialogOpen, setIsExceptionDialogOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Converter formato do backend (string keys) para frontend (number keys)
+  const convertBackendToFrontend = (backend: BackendWeeklyAvailability): WeeklyAvailability => {
+    const frontend: WeeklyAvailability = {}
+    for (const [key, value] of Object.entries(backend)) {
+      frontend[Number(key)] = value
+    }
+    // Garantir que todos os dias existam
+    for (let i = 0; i <= 6; i++) {
+      if (!frontend[i]) {
+        frontend[i] = { active: false, slots: [] }
+      }
+    }
+    return frontend
+  }
+
+  // Converter formato do frontend (number keys) para backend (string keys)
+  const convertFrontendToBackend = (frontend: WeeklyAvailability): BackendWeeklyAvailability => {
+    const backend: BackendWeeklyAvailability = {}
+    for (const [key, value] of Object.entries(frontend)) {
+      backend[String(key)] = value
+    }
+    return backend
+  }
+
+  // Carregar horários ao montar o componente
+  useEffect(() => {
+    loadOpeningHours()
+  }, [])
+
+  const loadOpeningHours = async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const result = await openingHoursService.getOpeningHours()
+      if (result.success && result.data) {
+        const frontendFormat = convertBackendToFrontend(result.data)
+        setAvailability(frontendFormat)
+      } else {
+        setError(result.error || 'Erro ao carregar horários')
+        // Usar estrutura vazia se não houver dados
+        setAvailability(getEmptyAvailability())
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erro ao carregar horários')
+      setAvailability(getEmptyAvailability())
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSave = async () => {
+    setIsSaving(true)
+    setError(null)
+    try {
+      const backendFormat = convertFrontendToBackend(availability)
+      const result = await openingHoursService.updateOpeningHours(backendFormat)
+      
+      if (result.success) {
+        toast.success('Horários atualizados com sucesso!')
+        // Atualizar com os dados retornados do backend
+        if (result.data) {
+          const frontendFormat = convertBackendToFrontend(result.data)
+          setAvailability(frontendFormat)
+        }
+      } else {
+        const errorMsg = result.error || 'Erro ao salvar horários'
+        setError(errorMsg)
+        toast.error(errorMsg)
+      }
+    } catch (err: any) {
+      const errorMessage = err.message || 'Erro ao salvar horários'
+      setError(errorMessage)
+      toast.error(errorMessage)
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const toggleDayActive = (dayId: number) => {
     setAvailability(prev => ({
@@ -123,9 +203,15 @@ export function ProAvailability() {
     setExceptions(prev => prev.filter(e => e.date !== date))
   }
 
-  const hasConflicts = () => {
-    // Simular verificação de conflitos
-    return false
+  if (isLoading) {
+    return (
+      <div className="p-10 flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          <p className="text-muted-foreground">Carregando horários...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -137,24 +223,30 @@ export function ProAvailability() {
         </div>
         
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={loadOpeningHours} disabled={isLoading}>
             <Clock className="w-4 h-4 mr-2" />
-            Copiar Horário
+            Recarregar
           </Button>
-          <Button size="sm">
-            <Save className="w-4 h-4 mr-2" />
-            Salvar Alterações
+          <Button size="sm" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Salvar Alterações
+              </>
+            )}
           </Button>
         </div>
       </div>
 
-      {hasConflicts() && (
+      {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Atenção: Algumas alterações conflitam com agendamentos existentes. 
-            Verifique seus compromissos antes de salvar.
-          </AlertDescription>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
@@ -230,8 +322,8 @@ export function ProAvailability() {
           </CardContent>
         </Card>
 
-        {/* Exceções e Calendário */}
-        <div className="space-y-6">
+        {/* Exceções - Ocultado temporariamente */}
+        {/* <div className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Exceções</CardTitle>
@@ -275,8 +367,10 @@ export function ProAvailability() {
               </div>
             </CardContent>
           </Card>
+        </div> */}
 
-          {/* Preview de Slots */}
+        {/* Preview de Slots */}
+        <div className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Próximos Horários</CardTitle>

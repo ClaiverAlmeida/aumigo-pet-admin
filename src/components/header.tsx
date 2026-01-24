@@ -2,7 +2,7 @@ import { Button } from './ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Badge } from './ui/badge'
 import { SidebarTrigger } from './ui/sidebar'
-import { Bell, LogOut, User } from 'lucide-react'
+import { Bell, LogOut, User, FileText } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu'
 import { NotificationBell } from './notification-bell'
+import { useRouter } from '../hooks/useRouter'
 
 interface User {
   id: string
@@ -30,6 +31,8 @@ interface HeaderProps {
 }
 
 export function Header({ currentPageTitle, user, onLogout }: HeaderProps) {
+  const { navigate } = useRouter()
+
   return (
     <header className="border-b bg-background supports-[backdrop-filter]:bg-background/95 backdrop-blur sticky top-0 z-40 shadow-sm">
       <div className="flex h-16 items-center px-6">
@@ -78,7 +81,8 @@ export function Header({ currentPageTitle, user, onLogout }: HeaderProps) {
                 </div>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+         
+              <DropdownMenuItem onClick={() => navigate('/pro/kyc')}>
                 <User className="mr-2 h-4 w-4" />
                 <span>Meu Perfil</span>
               </DropdownMenuItem>

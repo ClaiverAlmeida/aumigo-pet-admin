@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { ImageWithFallback } from './figma/ImageWithFallback'
-import exampleImage from 'figma:asset/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
+import exampleImage from '../assets/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
 import {
   Shield,
   Users,

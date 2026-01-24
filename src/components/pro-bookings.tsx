@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
@@ -23,85 +23,13 @@ import {
   Eye,
   MessageSquare,
   Filter,
-  Search
+  Search,
+  Pencil,
+  Save,
+  X
 } from 'lucide-react'
-
-type BookingStatus = 'PENDING' | 'CONFIRMED' | 'DONE' | 'CANCELLED'
-
-interface Booking {
-  id: string
-  tutorName: string
-  tutorAvatar: string
-  tutorPhone: string
-  tutorEmail: string
-  petName: string
-  petBreed: string
-  service: string
-  date: string
-  time: string
-  status: BookingStatus
-  price: number
-  address?: {
-    street: string
-    city: string
-  }
-  notes?: string
-  createdAt: string
-}
-
-const mockBookings: Booking[] = [
-  {
-    id: '1',
-    tutorName: 'João Silva',
-    tutorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
-    tutorPhone: '(11) 99999-9999',
-    tutorEmail: 'joao@email.com',
-    petName: 'Max',
-    petBreed: 'Golden Retriever',
-    service: 'Dr. Ana Veterinária',
-    date: '2025-09-06',
-    time: '09:00',
-    status: 'PENDING',
-    price: 8000,
-    address: {
-      street: 'Rua das Flores, 123',
-      city: 'São Paulo - SP'
-    },
-    notes: 'Pet muito dócil, primeira vez na consulta veterinária',
-    createdAt: '2025-09-05'
-  },
-  {
-    id: '2',
-    tutorName: 'Ana Costa',
-    tutorAvatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face',
-    tutorPhone: '(11) 88888-8888',
-    tutorEmail: 'ana@email.com',
-    petName: 'Luna',
-    petBreed: 'Border Collie',
-    service: 'Adestramento',
-    date: '2025-09-06',
-    time: '14:00',
-    status: 'CONFIRMED',
-    price: 15000,
-    notes: 'Pet com problema de ansiedade de separação',
-    createdAt: '2025-09-03'
-  },
-  {
-    id: '3',
-    tutorName: 'Carlos Santos',
-    tutorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face',
-    tutorPhone: '(11) 77777-7777',
-    tutorEmail: 'carlos@email.com',
-    petName: 'Buddy',
-    petBreed: 'Labrador',
-    service: 'Consulta Veterinária',
-    date: '2025-09-05',
-    time: '16:00',
-    status: 'DONE',
-    price: 12000,
-    createdAt: '2025-09-01'
-  }
-]
+import { bookingsService, Booking, BookingStatus } from '../services/bookings.service'
+import { toast } from 'sonner'
 
 const statusMap = {
   PENDING: { label: 'Pendente', color: 'yellow' as const },
@@ -110,49 +38,183 @@ const statusMap = {
   CANCELLED: { label: 'Cancelado', color: 'red' as const }
 }
 
+const formatPrice = (cents: number) => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(cents / 100)
+}
+
+const formatDate = (dateStr: string) => {
+  try {
+    return new Date(dateStr).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })
+  } catch {
+    return dateStr
+  }
+}
+
 export function ProBookings() {
-  const [bookings, setBookings] = useState<Booking[]>(mockBookings)
+  const [bookings, setBookings] = useState<Booking[]>([])
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [pendingAction, setPendingAction] = useState<{ bookingId: string; status: BookingStatus } | null>(null)
   const [filters, setFilters] = useState({
-    status: 'all',
+    status: 'all' as 'all' | BookingStatus,
     search: '',
     dateFrom: '',
     dateTo: ''
   })
 
-  const formatPrice = (cents: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(cents / 100)
+  // Carregar agendamentos ao montar o componente
+  useEffect(() => {
+    loadBookings()
+  }, [filters])
+
+  const loadBookings = async () => {
+    setIsLoading(true)
+    try {
+      const result = await bookingsService.getAll({
+        status: filters.status !== 'all' ? filters.status : undefined,
+        search: filters.search || undefined,
+        dateFrom: filters.dateFrom || undefined,
+        dateTo: filters.dateTo || undefined,
+        limit: 100
+      })
+
+      if (result.success && result.data) {
+        // O backend retorna { data: Booking[], pagination: {...} }
+        const response = result.data as any
+        const bookingsData = response.data || response
+        const bookingsArray = Array.isArray(bookingsData) ? bookingsData : []
+        setBookings(bookingsArray)
+      } else {
+        toast.error(result.error || 'Erro ao carregar agendamentos')
+      }
+    } catch (error: any) {
+      toast.error('Erro ao carregar agendamentos')
+      console.error('Erro ao carregar agendamentos:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('pt-BR')
+
+
+  const handleStatusChange = async (bookingId: string, newStatus: BookingStatus) => {
+    // Abrir diálogo de confirmação
+    setPendingAction({ bookingId, status: newStatus })
+    setShowConfirmDialog(true)
   }
 
-  const handleStatusChange = (bookingId: string, newStatus: BookingStatus) => {
-    setBookings(bookings.map(booking => 
-      booking.id === bookingId ? { ...booking, status: newStatus } : booking
-    ))
+  const confirmStatusChange = async () => {
+    if (!pendingAction) return
+
+    const { bookingId, status: newStatus } = pendingAction
+
+    try {
+      const result = await bookingsService.update(bookingId, { status: newStatus })
+      
+      if (result.success && result.data) {
+        setBookings(bookings.map(booking => 
+          booking.id === bookingId ? result.data! : booking
+        ))
+        toast.success(`Agendamento ${newStatus === 'CONFIRMED' ? 'confirmado' : newStatus === 'DONE' ? 'concluído' : 'cancelado'} com sucesso!`)
+        
+        // Atualizar booking selecionado se for o mesmo
+        if (selectedBooking?.id === bookingId) {
+          setSelectedBooking(result.data)
+        }
+      } else {
+        toast.error(result.error || 'Erro ao atualizar status')
+      }
+    } catch (error: any) {
+      toast.error('Erro ao atualizar status do agendamento')
+      console.error('Erro ao atualizar status:', error)
+    } finally {
+      setShowConfirmDialog(false)
+      setPendingAction(null)
+    }
   }
 
+  // Filtrar localmente (aplicar todos os filtros)
   const filteredBookings = bookings.filter(booking => {
-    if (filters.status !== 'all' && booking.status !== filters.status) return false
+    // Filtro de busca (nome, pet ou serviço)
     if (filters.search && 
-        !booking.tutorName.toLowerCase().includes(filters.search.toLowerCase()) &&
-        !booking.petName.toLowerCase().includes(filters.search.toLowerCase()) &&
-        !booking.service.toLowerCase().includes(filters.search.toLowerCase())) {
+        !booking.customerName?.toLowerCase().includes(filters.search.toLowerCase()) &&
+        !booking.petName?.toLowerCase().includes(filters.search.toLowerCase()) &&
+        !booking.serviceName?.toLowerCase().includes(filters.search.toLowerCase())) {
       return false
     }
-    if (filters.dateFrom && booking.date < filters.dateFrom) return false
-    if (filters.dateTo && booking.date > filters.dateTo) return false
+
+    // Filtro de status
+    if (filters.status !== 'all' && booking.status !== filters.status) {
+      return false
+    }
+
+    // Filtro de data (dateFrom)
+    if (filters.dateFrom) {
+      try {
+        const bookingDate = new Date(booking.date).toISOString().split('T')[0]
+        const filterDateFrom = new Date(filters.dateFrom).toISOString().split('T')[0]
+        if (bookingDate < filterDateFrom) {
+          return false
+        }
+      } catch {
+        // Se houver erro ao comparar datas, mantém o booking
+      }
+    }
+
+    // Filtro de data (dateTo)
+    if (filters.dateTo) {
+      try {
+        const bookingDate = new Date(booking.date).toISOString().split('T')[0]
+        const filterDateTo = new Date(filters.dateTo).toISOString().split('T')[0]
+        if (bookingDate > filterDateTo) {
+          return false
+        }
+      } catch {
+        // Se houver erro ao comparar datas, mantém o booking
+      }
+    }
+
     return true
+  })
+  .sort((a, b) => {
+    // Ordenar por data e hora mais recente primeiro
+    try {
+      // Combinar date e time para criar um timestamp completo
+      const dateA = new Date(a.date)
+      const timeA = a.time ? a.time.split(':') : ['0', '0']
+      dateA.setHours(parseInt(timeA[0]) || 0, parseInt(timeA[1]) || 0, 0, 0)
+
+      const dateB = new Date(b.date)
+      const timeB = b.time ? b.time.split(':') : ['0', '0']
+      dateB.setHours(parseInt(timeB[0]) || 0, parseInt(timeB[1]) || 0, 0, 0)
+
+      // Ordenar decrescente (mais recente primeiro)
+      return dateB.getTime() - dateA.getTime()
+    } catch {
+      // Em caso de erro, manter ordem original
+      return 0
+    }
   })
 
   const pendingCount = bookings.filter(b => b.status === 'PENDING').length
-  const todayCount = bookings.filter(b => b.date === '2025-09-06').length
+  const today = new Date().toISOString().split('T')[0]
+  const todayCount = bookings.filter(b => {
+    try {
+      const bookingDate = new Date(b.date).toISOString().split('T')[0]
+      return bookingDate === today
+    } catch {
+      return false
+    }
+  }).length
 
   return (
     <div className="p-10 space-y-6">
@@ -200,7 +262,7 @@ export function ProBookings() {
             
             <div>
               <Label htmlFor="status">Status</Label>
-              <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}>
+              <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value as 'all' | BookingStatus })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos os status" />
                 </SelectTrigger>
@@ -252,25 +314,38 @@ export function ProBookings() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredBookings.map((booking) => (
-                <TableRow key={booking.id} className="cursor-pointer hover:bg-muted/50">
-                  <TableCell>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    <p className="text-muted-foreground">Carregando agendamentos...</p>
+                  </TableCell>
+                </TableRow>
+              ) : filteredBookings.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    <p className="text-muted-foreground">Nenhum agendamento encontrado</p>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredBookings.map((booking) => (
+                  <TableRow key={booking.id} className="cursor-pointer hover:bg-muted/50">
+                    <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={booking.tutorAvatar} />
-                        <AvatarFallback>{booking.tutorName[0]}</AvatarFallback>
+                        <AvatarImage src={booking.customer?.avatar} />
+                        <AvatarFallback>{(booking.customerName || 'C')[0]}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium text-sm">{booking.tutorName}</p>
+                        <p className="font-medium text-sm">{booking.customerName || 'Cliente'}</p>
                         <p className="text-xs text-muted-foreground">
-                          {booking.petName} ({booking.petBreed})
+                          {booking.petName || 'Pet'} {booking.pet?.breed ? `(${booking.pet.breed})` : ''}
                         </p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-medium text-sm">{booking.service}</p>
+                      <p className="font-medium text-sm">{booking.serviceName || booking.service?.name || 'Serviço'}</p>
                       {booking.address && (
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <MapPin className="w-3 h-3" />
@@ -323,10 +398,10 @@ export function ProBookings() {
                           <Eye className="w-4 h-4 mr-2" />
                           Ver Detalhes
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {}}>
+                        {/* <DropdownMenuItem onClick={() => {}}>
                           <MessageSquare className="w-4 h-4 mr-2" />
                           Chat
-                        </DropdownMenuItem>
+                        </DropdownMenuItem> */}
                         {booking.status === 'PENDING' && (
                           <DropdownMenuItem onClick={() => handleStatusChange(booking.id, 'CONFIRMED')}>
                             <CheckCircle className="w-4 h-4 mr-2" />
@@ -351,8 +426,9 @@ export function ProBookings() {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
-                </TableRow>
-              ))}
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -365,9 +441,58 @@ export function ProBookings() {
             booking={selectedBooking}
             onClose={() => setIsDetailDialogOpen(false)}
             onStatusChange={handleStatusChange}
+            onUpdate={loadBookings}
           />
         )}
       </Dialog>
+
+      {/* Dialog de Confirmação */}
+      {showConfirmDialog && pendingAction && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <Alert className="max-w-md w-full shadow-xl border-2 bg-background">
+            <AlertDescription>
+              <div className="space-y-4">
+                <div>
+                  <p className="font-semibold text-lg mb-2">
+                    {pendingAction.status === 'CONFIRMED' ? 'Confirmar Agendamento' : 
+                     pendingAction.status === 'DONE' ? 'Concluir Agendamento' : 
+                     pendingAction.status === 'CANCELLED' ? 'Cancelar Agendamento' : 
+                     'Confirmar Ação'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {pendingAction.status === 'CONFIRMED' && 
+                      'Tem certeza que deseja confirmar este agendamento?'}
+                    {pendingAction.status === 'DONE' && 
+                      'Tem certeza que deseja marcar este agendamento como concluído?'}
+                    {pendingAction.status === 'CANCELLED' && 
+                      'Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita.'}
+                  </p>
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowConfirmDialog(false)
+                      setPendingAction(null)
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    onClick={confirmStatusChange}
+                    variant={pendingAction.status === 'CANCELLED' ? 'destructive' : 'default'}
+                  >
+                    {pendingAction.status === 'CONFIRMED' ? 'Confirmar' : 
+                     pendingAction.status === 'DONE' ? 'Concluir' : 
+                     pendingAction.status === 'CANCELLED' ? 'Confirmar Cancelamento' : 
+                     'Confirmar'}
+                  </Button>
+                </div>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
     </div>
   )
 }
@@ -376,16 +501,77 @@ interface BookingDetailDialogProps {
   booking: Booking
   onClose: () => void
   onStatusChange: (bookingId: string, status: BookingStatus) => void
+  onUpdate?: () => void // Callback para recarregar lista após atualização
 }
 
-function BookingDetailDialog({ booking, onClose, onStatusChange }: BookingDetailDialogProps) {
+function BookingDetailDialog({ booking, onClose, onStatusChange, onUpdate }: BookingDetailDialogProps) {
   const [cancelReason, setCancelReason] = useState('')
   const [showCancelForm, setShowCancelForm] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [pendingStatus, setPendingStatus] = useState<BookingStatus | null>(null)
+  const [isEditingDateTime, setIsEditingDateTime] = useState(false)
+  const [editedDate, setEditedDate] = useState(() => {
+    const date = new Date(booking.date)
+    return date.toISOString().split('T')[0]
+  })
+  const [editedTime, setEditedTime] = useState(booking.time)
+  const [isSaving, setIsSaving] = useState(false)
 
   const handleCancel = () => {
-    onStatusChange(booking.id, 'CANCELLED')
-    setShowCancelForm(false)
-    onClose()
+    setPendingStatus('CANCELLED')
+    setShowConfirmDialog(true)
+  }
+
+  const handleConfirmClick = (status: BookingStatus) => {
+    setPendingStatus(status)
+    setShowConfirmDialog(true)
+  }
+
+  const confirmAction = () => {
+    if (pendingStatus) {
+      if (pendingStatus === 'CANCELLED') {
+        setShowCancelForm(false)
+        setCancelReason('')
+      }
+      onStatusChange(booking.id, pendingStatus)
+      setShowConfirmDialog(false)
+      setPendingStatus(null)
+      onClose()
+    }
+  }
+
+  const handleSaveDateTime = async () => {
+    setIsSaving(true)
+    try {
+      const dateTime = new Date(`${editedDate}T${editedTime}:00`)
+      const result = await bookingsService.update(booking.id, {
+        date: dateTime.toISOString(),
+        time: editedTime,
+      })
+
+      if (result.success) {
+        toast.success('Data e horário atualizados com sucesso!')
+        setIsEditingDateTime(false)
+        onUpdate?.() // Recarregar lista se callback fornecido
+        onClose()
+      } else {
+        toast.error(result.error || 'Erro ao atualizar data e horário')
+      }
+    } catch (error: any) {
+      toast.error('Erro ao atualizar data e horário')
+      console.error('Erro ao atualizar data e horário:', error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditedDate(() => {
+      const date = new Date(booking.date)
+      return date.toISOString().split('T')[0]
+    })
+    setEditedTime(booking.time)
+    setIsEditingDateTime(false)
   }
 
   return (
@@ -399,27 +585,31 @@ function BookingDetailDialog({ booking, onClose, onStatusChange }: BookingDetail
 
       <div className="space-y-6">
         {/* Informações do Cliente */}
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 grid-cols-1">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Cliente</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center gap-3">
-                <Avatar>
-                  <AvatarImage src={booking.tutorAvatar} />
-                  <AvatarFallback>{booking.tutorName[0]}</AvatarFallback>
+              <div className="flex items-start gap-3">
+                <Avatar className="flex-shrink-0">
+                  <AvatarImage src={booking.customer?.id} />
+                  <AvatarFallback>{(booking.customerName || booking.customer?.name || 'C')[0]}</AvatarFallback>
                 </Avatar>
-                <div>
-                  <p className="font-medium">{booking.tutorName}</p>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Phone className="w-3 h-3" />
-                    {booking.tutorPhone}
-                  </div>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Mail className="w-3 h-3" />
-                    {booking.tutorEmail}
-                  </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{booking.customerName || booking.customer?.name || 'Cliente'}</p>
+                  {booking.customer?.phone && (
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                      <Phone className="w-3 h-3 flex-shrink-0" />
+                      <span className="truncate">{booking.customer.phone}</span>
+                    </div>
+                  )}
+                  {booking.customer?.email && (
+                    <div className="flex items-start gap-1 text-sm text-muted-foreground mt-1">
+                      <Mail className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                      <span className="break-words break-all">{booking.customer.email}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -429,11 +619,47 @@ function BookingDetailDialog({ booking, onClose, onStatusChange }: BookingDetail
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Pet</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-2">
               <div>
-                <p className="font-medium">{booking.petName}</p>
-                <p className="text-sm text-muted-foreground">{booking.petBreed}</p>
+                <p className="font-medium">{booking.petName || booking.pet?.name || 'Pet'}</p>
+                {booking.pet?.species && (
+                  <p className="text-sm text-muted-foreground capitalize">
+                    {booking.pet.species === 'DOG' ? 'Cachorro' : 
+                     booking.pet.species === 'CAT' ? 'Gato' :
+                     booking.pet.species === 'BIRD' ? 'Pássaro' :
+                     booking.pet.species === 'FISH' ? 'Peixe' :
+                     booking.pet.species === 'RABBIT' ? 'Coelho' :
+                     booking.pet.species === 'HAMSTER' ? 'Hamster' :
+                     booking.pet.species}
+                  </p>
+                )}
+                {booking.pet?.breed && (
+                  <p className="text-sm text-muted-foreground">Raça: {booking.pet.breed}</p>
+                )}
               </div>
+              {(booking.pet?.gender || booking.pet?.weight || booking.pet?.birthDate) && (
+                <div className="space-y-1 pt-2 border-t">
+                  {booking.pet?.gender && booking.pet.gender !== 'UNKNOWN' && (
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <span>
+                        {booking.pet.gender === 'MALE' ? 'Macho' : 
+                         booking.pet.gender === 'FEMALE' ? 'Fêmea' : 
+                         booking.pet.gender}
+                      </span>
+                    </div>
+                  )}
+                  {booking.pet?.weight && (
+                    <div className="text-sm text-muted-foreground">
+                      Peso: {booking.pet.weight.toFixed(2)} kg
+                    </div>
+                  )}
+                  {booking.pet?.birthDate && (
+                    <div className="text-sm text-muted-foreground">
+                      Nascimento: {formatDate(booking.pet.birthDate)}
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -447,33 +673,87 @@ function BookingDetailDialog({ booking, onClose, onStatusChange }: BookingDetail
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <Label>Serviço</Label>
-                <p className="font-medium">{booking.service}</p>
+                <p className="font-medium">{booking.serviceName || booking.service?.name || 'Serviço'}</p>
               </div>
               <div>
                 <Label>Valor</Label>
-                <p className="font-medium">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(booking.price / 100)}</p>
+                <p className="font-medium">{formatPrice(booking.price)}</p>
               </div>
             </div>
             
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <Label>Data</Label>
-                <p className="font-medium">{new Date(booking.date).toLocaleDateString('pt-BR')}</p>
+                <div className="flex items-center justify-between mb-1">
+                  <Label>Data</Label>
+                  {!isEditingDateTime && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsEditingDateTime(true)}
+                      className="h-6 px-2"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                  )}
+                </div>
+                {isEditingDateTime ? (
+                  <Input
+                    type="date"
+                    value={editedDate}
+                    onChange={(e) => setEditedDate(e.target.value)}
+                    className="w-full"
+                  />
+                ) : (
+                  <p className="font-medium">{formatDate(booking.date)}</p>
+                )}
               </div>
               <div>
                 <Label>Horário</Label>
-                <p className="font-medium">{booking.time}</p>
+                {isEditingDateTime ? (
+                  <Input
+                    type="time"
+                    value={editedTime}
+                    onChange={(e) => setEditedTime(e.target.value)}
+                    className="w-full mt-1"
+                  />
+                ) : (
+                  <p className="font-medium">{booking.time}</p>
+                )}
               </div>
             </div>
+            {isEditingDateTime && (
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancelEdit}
+                  disabled={isSaving}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveDateTime}
+                  disabled={isSaving}
+                >
+                  {isSaving ? 'Salvando...' : 'Salvar'}
+                </Button>
+              </div>
+            )}
 
-            {booking.address && (
+            {(booking.address || booking.city) && (
               <div>
-                <Label>Endereço (Domicílio)</Label>
+                <Label>Endereço {booking.address ? '(Domicílio)' : ''}</Label>
                 <div className="flex items-start gap-2">
                   <MapPin className="w-4 h-4 mt-1 text-muted-foreground" />
                   <div>
-                    <p className="font-medium">{booking.address.street}</p>
-                    <p className="text-sm text-muted-foreground">{booking.address.city}</p>
+                    {booking.address && <p className="font-medium">{booking.address}</p>}
+                    {(booking.city || booking.state) && (
+                      <p className="text-sm text-muted-foreground">
+                        {[booking.city, booking.state].filter(Boolean).join(', ')}
+                        {booking.zipCode && ` - ${booking.zipCode}`}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -508,6 +788,49 @@ function BookingDetailDialog({ booking, onClose, onStatusChange }: BookingDetail
           </CardContent>
         </Card>
 
+        {/* Alert de Confirmação para Confirmar/Concluir */}
+        {showConfirmDialog && pendingStatus && pendingStatus !== 'CANCELLED' && (
+          <Alert className="border-2 border-blue-200 bg-blue-50">
+            <AlertDescription>
+              <div className="space-y-4">
+                <div>
+                  <p className="font-semibold text-base mb-2">
+                    {pendingStatus === 'CONFIRMED' ? 'Confirmar Agendamento' : 
+                     pendingStatus === 'DONE' ? 'Concluir Agendamento' : 
+                     'Confirmar Ação'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {pendingStatus === 'CONFIRMED' && 
+                      'Tem certeza que deseja confirmar este agendamento?'}
+                    {pendingStatus === 'DONE' && 
+                      'Tem certeza que deseja marcar este agendamento como concluído?'}
+                  </p>
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowConfirmDialog(false)
+                      setPendingStatus(null)
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    onClick={confirmAction}
+                  >
+                    {pendingStatus === 'CONFIRMED' ? 'Confirmar' : 
+                     pendingStatus === 'DONE' ? 'Concluir' : 
+                     'Confirmar'}
+                  </Button>
+                </div>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Ações */}
         <div className="flex justify-between">
           <Button variant="outline" onClick={onClose}>
@@ -515,20 +838,20 @@ function BookingDetailDialog({ booking, onClose, onStatusChange }: BookingDetail
           </Button>
           
           <div className="flex gap-2">
-            <Button variant="outline">
+            {/* <Button variant="outline">
               <MessageSquare className="w-4 h-4 mr-2" />
               Chat
-            </Button>
+            </Button> */}
             
             {booking.status === 'PENDING' && (
-              <Button onClick={() => onStatusChange(booking.id, 'CONFIRMED')}>
+              <Button onClick={() => handleConfirmClick('CONFIRMED')}>
                 <CheckCircle className="w-4 h-4 mr-2" />
                 Confirmar
               </Button>
             )}
             
             {booking.status === 'CONFIRMED' && (
-              <Button onClick={() => onStatusChange(booking.id, 'DONE')}>
+              <Button onClick={() => handleConfirmClick('DONE')}>
                 <CheckCircle className="w-4 h-4 mr-2" />
                 Concluir
               </Button>
@@ -574,6 +897,7 @@ function BookingDetailDialog({ booking, onClose, onStatusChange }: BookingDetail
             </AlertDescription>
           </Alert>
         )}
+
       </div>
     </DialogContent>
   )

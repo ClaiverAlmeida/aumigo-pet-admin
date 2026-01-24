@@ -71,10 +71,10 @@ export function Footer() {
                 <Mail className="h-4 w-4 text-aumigo-blue" />
                 suporte@aumigopet.com
               </li>
-              <li className="flex items-center gap-2 text-muted-foreground text-sm">
+              {/* <li className="flex items-center gap-2 text-muted-foreground text-sm">
                 <Phone className="h-4 w-4 text-aumigo-blue" />
                 (11) 4002-8922
-              </li>
+              </li> */}
               <li className="flex items-center gap-2 text-muted-foreground text-sm">
                 <MapPin className="h-4 w-4 text-aumigo-blue" />
                 São Paulo, SP

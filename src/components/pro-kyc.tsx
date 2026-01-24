@@ -1,190 +1,185 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
-import { Textarea } from './ui/textarea'
-import { Progress } from './ui/progress'
-import { Alert, AlertDescription } from './ui/alert'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
-import { ImageWithFallback } from './figma/ImageWithFallback'
 import { 
-  Upload, 
-  CheckCircle, 
-  XCircle, 
-  Clock,
-  FileText,
-  Camera,
-  Home,
+  Loader2,
   User,
-  Building,
-  AlertTriangle,
-  Eye,
-  Trash2
+  Building
 } from 'lucide-react'
+import { companiesService, usersService } from '../services'
+import { toast } from 'sonner'
+import { useAuth } from '../contexts/AuthContext'
 
-type KycStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
-
-interface KycDocument {
+interface UserData {
   id: string
-  kind: string
-  fileName: string
-  fileUrl: string
-  status: KycStatus
-  feedback?: string
-  uploadedAt: string
-}
-
-interface ProfessionalProfile {
   name: string
   email: string
-  phone: string
-  bio: string
-  cnpj: string
-  avatarUrl: string
-  address: {
-    street: string
-    city: string
-    state: string
-    zip: string
-  }
-  kycStatus: KycStatus
+  phone?: string
+  address?: string
+  city?: string
+  state?: string
+  zipCode?: string
+  profilePicture?: string
 }
 
-const mockProfile: ProfessionalProfile = {
-  name: 'Claiver Almeida',
-  email: 'maria@email.com', 
-  phone: '(11) 99999-9999',
-  bio: 'Veterinária especializada com 5 anos de experiência. Trabalho com muito carinho e dedicação para o bem-estar dos pets.',
-  cnpj: '12.345.678/0001-90',
-  avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-  address: {
-    street: 'Rua das Flores, 123',
-    city: 'São Paulo',
-    state: 'SP',
-    zip: '01234-567'
-  },
-  kycStatus: 'PENDING'
+interface CompanyData {
+  id: string
+  name: string
+  cnpj?: string
+  address?: string
+  addressNumber?: string
+  city?: string
+  state?: string
+  zipCode?: string
+  contactPhone?: string
+  contactEmail?: string
+  website?: string
 }
-
-const mockDocuments: KycDocument[] = [
-  {
-    id: '1',
-    kind: 'rg',
-    fileName: 'RG_frente.jpg',
-    fileUrl: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=200&h=150&fit=crop',
-    status: 'APPROVED',
-    uploadedAt: '2025-09-01'
-  },
-  {
-    id: '2', 
-    kind: 'selfie',
-    fileName: 'Selfie_documento.jpg',
-    fileUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=150&fit=crop&crop=face',
-    status: 'PENDING',
-    uploadedAt: '2025-09-02'
-  },
-  {
-    id: '3',
-    kind: 'comprovante',
-    fileName: 'Comprovante_residencia.pdf',
-    fileUrl: '/placeholder-document.png',
-    status: 'REJECTED',
-    feedback: 'Documento ilegível. Favor enviar uma versão com melhor qualidade.',
-    uploadedAt: '2025-09-03'
-  }
-]
-
-const documentTypes = [
-  { key: 'rg', label: 'RG ou CNH', icon: User, description: 'Documento de identidade com foto' },
-  { key: 'selfie', label: 'Selfie com Documento', icon: Camera, description: 'Foto sua segurando o documento' },
-  { key: 'comprovante', label: 'Comprovante de Residência', icon: Home, description: 'Conta de luz, água ou telefone (últimos 3 meses)' },
-  { key: 'cnpj', label: 'Comprovante de CNPJ', icon: Building, description: 'Cartão CNPJ ou contrato social (opcional)' }
-]
 
 export function ProKYC() {
-  const [profile, setProfile] = useState<ProfessionalProfile>(mockProfile)
-  const [documents, setDocuments] = useState<KycDocument[]>(mockDocuments)
-  const [isEditing, setIsEditing] = useState(false)
+  const { user } = useAuth()
+  const [userData, setUserData] = useState<UserData>({
+    id: '',
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    profilePicture: '',
+  })
+  const [company, setCompany] = useState<CompanyData>({
+    id: '',
+    name: '',
+    cnpj: '',
+    address: '',
+    addressNumber: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    contactPhone: '',
+    contactEmail: '',
+    website: '',
+  })
+  const [isEditingCompany, setIsEditingCompany] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
 
-  const handleProfileChange = (field: string, value: string) => {
-    setProfile(prev => {
-      if (field.includes('.')) {
-        const [parent, child] = field.split('.')
-        return {
-          ...prev,
-          [parent]: {
-            ...prev[parent as keyof typeof prev],
-            [child]: value
-          }
-        }
+  // Carregar dados iniciais
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      // Buscar dados do usuário via API
+      const userResult = await usersService.getMyProfile()
+      if (userResult.success && userResult.data) {
+        const userDataFromApi = userResult.data
+        setUserData({
+          id: userDataFromApi.id || '',
+          name: userDataFromApi.name || '',
+          email: userDataFromApi.email || '',
+          phone: userDataFromApi.phone || '',
+          address: userDataFromApi.address || '',
+          city: userDataFromApi.city || '',
+          state: userDataFromApi.state || '',
+          zipCode: userDataFromApi.zipCode || '',
+          profilePicture: userDataFromApi.profilePicture || '',
+        })
+      } else if (user) {
+        // Fallback para AuthContext se API falhar
+        setUserData({
+          id: user.id || '',
+          name: user.name || '',
+          email: user.email || '',
+          phone: user.phone || '',
+          address: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          profilePicture: user.avatar || '',
+        })
       }
-      return { ...prev, [field]: value }
-    })
-  }
 
-  const completionPercentage = () => {
-    const requiredDocs = ['rg', 'selfie', 'comprovante']
-    const approvedDocs = documents.filter(doc => 
-      requiredDocs.includes(doc.kind) && doc.status === 'APPROVED'
-    )
-    return Math.round((approvedDocs.length / requiredDocs.length) * 100)
-  }
-
-  const getStatusIcon = (status: KycStatus) => {
-    switch (status) {
-      case 'APPROVED':
-        return <CheckCircle className="w-4 h-4 text-green-600" />
-      case 'REJECTED':
-        return <XCircle className="w-4 h-4 text-red-600" />
-      default:
-        return <Clock className="w-4 h-4 text-yellow-600" />
+      // Buscar dados da empresa
+      const companyResult = await companiesService.getMyCompany()
+      if (companyResult.success && companyResult.data) {
+        const companyData = companyResult.data
+        setCompany({
+          id: companyData.id || '',
+          name: companyData.name || '',
+          cnpj: companyData.cnpj || '',
+          address: companyData.address || '',
+          addressNumber: companyData.addressNumber || '',
+          city: companyData.city || '',
+          state: companyData.state || '',
+          zipCode: companyData.zipCode || '',
+          contactPhone: companyData.contactPhone || '',
+          contactEmail: companyData.contactEmail || '',
+          website: companyData.website || '',
+        })
+      }
+    } catch (error: any) {
+      toast.error('Erro ao carregar dados: ' + (error.message || 'Erro desconhecido'))
+    } finally {
+      setLoading(false)
     }
   }
 
-  const getStatusBadge = (status: KycStatus) => {
-    const variants = {
-      APPROVED: 'default',
-      REJECTED: 'destructive', 
-      PENDING: 'secondary'
-    } as const
+  const handleCompanyChange = (field: keyof CompanyData, value: string) => {
+    setCompany(prev => ({ ...prev, [field]: value }))
+  }
 
-    const labels = {
-      APPROVED: 'Aprovado',
-      REJECTED: 'Rejeitado',
-      PENDING: 'Pendente'
+  const handleSaveCompany = async () => {
+    setSaving(true)
+    try {
+      // Preparar dados: remover strings vazias e converter para undefined
+      const prepareValue = (value: string | undefined): string | undefined => {
+        return value && value.trim() !== '' ? value.trim() : undefined;
+      };
+
+      const companyResult = await companiesService.updateMyCompany({
+        name: company.name || undefined,
+        cnpj: prepareValue(company.cnpj),
+        address: prepareValue(company.address),
+        addressNumber: prepareValue(company.addressNumber),
+        city: prepareValue(company.city),
+        state: prepareValue(company.state),
+        zipCode: prepareValue(company.zipCode),
+        contactPhone: prepareValue(company.contactPhone),
+        contactEmail: prepareValue(company.contactEmail),
+        website: prepareValue(company.website),
+      })
+
+      if (companyResult.success) {
+        toast.success('Dados da empresa atualizados com sucesso!')
+        setIsEditingCompany(false)
+        await loadData() // Recarregar dados
+      } else {
+        toast.error(companyResult.error || 'Erro ao salvar dados da empresa')
+      }
+    } catch (error: any) {
+      toast.error('Erro ao salvar dados da empresa: ' + (error.message || 'Erro desconhecido'))
+    } finally {
+      setSaving(false)
     }
+  }
 
+  if (loading) {
     return (
-      <Badge 
-        variant={variants[status]}
-        className={
-          status === 'APPROVED' ? 'bg-green-100 text-green-700 hover:bg-green-100' :
-          status === 'PENDING' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100' : ''
-        }
-      >
-        {labels[status]}
-      </Badge>
+      <div className="p-10 flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-aumigo-orange" />
+          <p className="text-muted-foreground">Carregando dados...</p>
+        </div>
+      </div>
     )
-  }
-
-  const handleFileUpload = (docType: string) => {
-    // Simular upload de arquivo
-    const newDoc: KycDocument = {
-      id: Date.now().toString(),
-      kind: docType,
-      fileName: `${docType}_${Date.now()}.jpg`,
-      fileUrl: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=200&h=150&fit=crop',
-      status: 'PENDING',
-      uploadedAt: new Date().toISOString().split('T')[0]
-    }
-
-    setDocuments([...documents.filter(d => d.kind !== docType), newDoc])
-  }
-
-  const handleDeleteDocument = (docId: string) => {
-    setDocuments(documents.filter(d => d.id !== docId))
   }
 
   return (
@@ -192,283 +187,224 @@ export function ProKYC() {
       <div className="flex justify-between items-center">
         <div>
           <h2>KYC & Perfil Profissional</h2>
-          <p className="text-muted-foreground">Complete sua verificação para começar a receber clientes</p>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Progress value={completionPercentage()} className="w-32" />
-          <span className="text-sm font-medium">{completionPercentage()}%</span>
+          <p className="text-muted-foreground">Gerencie seus dados pessoais e da empresa</p>
         </div>
       </div>
 
-      {/* Status Geral */}
-      <Alert className={profile.kycStatus === 'REJECTED' ? 'border-red-200' : ''}>
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>
-          <div className="flex items-center justify-between">
-            <div>
-              <strong>Status da Verificação:</strong> {getStatusBadge(profile.kycStatus)}
-              {profile.kycStatus === 'PENDING' && (
-                <span className="ml-2">Seus documentos estão sendo analisados. Isso pode levar até 48 horas.</span>
-              )}
-              {profile.kycStatus === 'REJECTED' && (
-                <span className="ml-2 text-red-600">Alguns documentos foram rejeitados. Verifique abaixo e reenvie.</span>
-              )}
-            </div>
-            {profile.kycStatus === 'APPROVED' && (
-              <Badge variant="default" className="bg-green-100 text-green-700">
-                <CheckCircle className="w-3 h-3 mr-1" />
-                Verificado
-              </Badge>
-            )}
-          </div>
-        </AlertDescription>
-      </Alert>
-
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Perfil Profissional */}
+        {/* Card: Dados do Usuário (Somente Leitura) */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              Dados Profissionais
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setIsEditing(!isEditing)}
-              >
-                {isEditing ? 'Cancelar' : 'Editar'}
-              </Button>
+            <CardTitle className="flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Dados do Usuário
             </CardTitle>
-            <CardDescription>Informações básicas do seu perfil</CardDescription>
+            <CardDescription>Informações pessoais do seu perfil (somente leitura)</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16">
-                <AvatarImage src={profile.avatarUrl} />
-                <AvatarFallback>{profile.name[0]}</AvatarFallback>
+                <AvatarImage src={userData.profilePicture} />
+                <AvatarFallback>{userData.name?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                {isEditing ? (
-                  <div className="space-y-2">
-                    <Input 
-                      value={profile.name} 
-                      placeholder="Nome completo"
-                      onChange={(e) => handleProfileChange('name', e.target.value)}
-                    />
-                    <Input 
-                      value={profile.phone} 
-                      placeholder="Telefone"
-                      onChange={(e) => handleProfileChange('phone', e.target.value)}
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <h3 className="font-medium">{profile.name}</h3>
-                    <p className="text-sm text-muted-foreground">{profile.phone}</p>
-                    <p className="text-sm text-muted-foreground">{profile.email}</p>
-                  </div>
-                )}
+                <div>
+                  <h3 className="font-medium">{userData.name || 'Não informado'}</h3>
+                  <p className="text-sm text-muted-foreground">{userData.email || 'Não informado'}</p>
+                  <p className="text-sm text-muted-foreground">{userData.phone || 'Não informado'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <Label>CEP</Label>
+                <p className="text-sm font-mono mt-1">{userData.zipCode || '-'}</p>
               </div>
             </div>
 
             <div>
-              <Label>Bio Profissional</Label>
-              {isEditing ? (
-                <Textarea 
-                  value={profile.bio}
-                  placeholder="Conte sobre sua experiência..."
-                  rows={4}
-                  onChange={(e) => handleProfileChange('bio', e.target.value)}
+              <Label>Endereço</Label>
+              <div className="text-sm mt-1">
+                {userData.address ? (
+                  <>
+                    <p>{userData.address}</p>
+                    <p>{userData.city} - {userData.state}</p>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">-</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Card: Dados da Empresa */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Building className="w-5 h-5" />
+                Dados da Empresa
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  if (isEditingCompany) {
+                    setIsEditingCompany(false)
+                    loadData() // Recarregar dados originais
+                  } else {
+                    setIsEditingCompany(true)
+                  }
+                }}
+              >
+                {isEditingCompany ? 'Cancelar' : 'Editar'}
+              </Button>
+            </CardTitle>
+            <CardDescription>Informações da sua empresa</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Nome da Empresa</Label>
+              {isEditingCompany ? (
+                <Input 
+                  value={company.name} 
+                  placeholder="Nome da empresa"
+                  onChange={(e) => handleCompanyChange('name', e.target.value)}
                 />
               ) : (
-                <p className="text-sm bg-muted p-3 rounded-md mt-1">{profile.bio}</p>
+                <p className="text-sm font-medium mt-1">{company.name || '-'}</p>
+              )}
+            </div>
+
+            <div>
+              <Label>CNPJ</Label>
+              {isEditingCompany ? (
+                <Input 
+                  value={company.cnpj || ''} 
+                  placeholder="00.000.000/0000-00"
+                  onChange={(e) => handleCompanyChange('cnpj', e.target.value)}
+                />
+              ) : (
+                <p className="text-sm font-mono mt-1">{company.cnpj || '-'}</p>
+              )}
+            </div>
+
+            <div>
+              <Label>Endereço</Label>
+              {isEditingCompany ? (
+                <div className="space-y-2">
+                  <Input 
+                    value={company.address || ''} 
+                    placeholder="Rua"
+                    onChange={(e) => handleCompanyChange('address', e.target.value)}
+                  />
+                  <Input 
+                    value={company.addressNumber || ''} 
+                    placeholder="Número"
+                    onChange={(e) => handleCompanyChange('addressNumber', e.target.value)}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input 
+                      value={company.city || ''} 
+                      placeholder="Cidade"
+                      onChange={(e) => handleCompanyChange('city', e.target.value)}
+                    />
+                    <Input 
+                      value={company.state || ''} 
+                      placeholder="UF"
+                      onChange={(e) => handleCompanyChange('state', e.target.value)}
+                    />
+                  </div>
+                  <Input 
+                    value={company.zipCode || ''} 
+                    placeholder="CEP"
+                    onChange={(e) => handleCompanyChange('zipCode', e.target.value)}
+                  />
+                </div>
+              ) : (
+                <div className="text-sm mt-1">
+                  {company.address ? (
+                    <>
+                      <p>{company.address}, {company.addressNumber}</p>
+                      <p>{company.city} - {company.state}</p>
+                      <p>{company.zipCode}</p>
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground">-</p>
+                  )}
+                </div>
               )}
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <Label>CNPJ (opcional)</Label>
-                {isEditing ? (
+                <Label>Telefone de Contato</Label>
+                {isEditingCompany ? (
                   <Input 
-                    value={profile.cnpj} 
-                    placeholder="00.000.000/0001-00"
-                    onChange={(e) => handleProfileChange('cnpj', e.target.value)}
+                    value={company.contactPhone || ''} 
+                    placeholder="(00) 00000-0000"
+                    onChange={(e) => handleCompanyChange('contactPhone', e.target.value)}
                   />
                 ) : (
-                  <p className="text-sm font-mono">{profile.cnpj || 'Não informado'}</p>
+                  <p className="text-sm mt-1">{company.contactPhone || '-'}</p>
                 )}
               </div>
               <div>
-                <Label>CEP</Label>
-                {isEditing ? (
+                <Label>Email de Contato</Label>
+                {isEditingCompany ? (
                   <Input 
-                    value={profile.address.zip} 
-                    placeholder="00000-000"
-                    onChange={(e) => handleProfileChange('address.zip', e.target.value)}
+                    value={company.contactEmail || ''} 
+                    placeholder="contato@empresa.com"
+                    onChange={(e) => handleCompanyChange('contactEmail', e.target.value)}
                   />
                 ) : (
-                  <p className="text-sm font-mono">{profile.address.zip}</p>
+                  <p className="text-sm mt-1">{company.contactEmail || '-'}</p>
                 )}
               </div>
             </div>
 
             <div>
-              <Label>Endereço Completo</Label>
-              {isEditing ? (
-                <div className="space-y-2">
-                  <Input 
-                    value={profile.address.street} 
-                    placeholder="Rua, número"
-                    onChange={(e) => handleProfileChange('address.street', e.target.value)}
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input 
-                      value={profile.address.city} 
-                      placeholder="Cidade"
-                      onChange={(e) => handleProfileChange('address.city', e.target.value)}
-                    />
-                    <Input 
-                      value={profile.address.state} 
-                      placeholder="UF"
-                      onChange={(e) => handleProfileChange('address.state', e.target.value)}
-                    />
-                  </div>
-                </div>
+              <Label>Website</Label>
+              {isEditingCompany ? (
+                <Input 
+                  value={company.website || ''} 
+                  placeholder="https://www.empresa.com"
+                  onChange={(e) => handleCompanyChange('website', e.target.value)}
+                />
               ) : (
-                <div className="text-sm">
-                  <p>{profile.address.street}</p>
-                  <p>{profile.address.city} - {profile.address.state}</p>
-                </div>
+                <p className="text-sm mt-1">{company.website || '-'}</p>
               )}
             </div>
 
-            {isEditing && (
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsEditing(false)}>
+            {isEditingCompany && (
+              <div className="flex justify-end gap-2 pt-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsEditingCompany(false)
+                    loadData()
+                  }}
+                  disabled={saving}
+                >
                   Cancelar
                 </Button>
-                <Button onClick={() => setIsEditing(false)}>
-                  Salvar Alterações
+                <Button 
+                  onClick={handleSaveCompany}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    'Salvar Alterações'
+                  )}
                 </Button>
               </div>
             )}
-          </CardContent>
-        </Card>
-
-        {/* Documentos KYC */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Documentos de Verificação</CardTitle>
-            <CardDescription>
-              Envie os documentos necessários para verificar sua identidade
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {documentTypes.map((docType) => {
-              const Icon = docType.icon
-              const existingDoc = documents.find(d => d.kind === docType.key)
-              
-              return (
-                <div key={docType.key} className="border rounded-lg p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-muted rounded-lg">
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">{docType.label}</p>
-                        <p className="text-xs text-muted-foreground">{docType.description}</p>
-                      </div>
-                    </div>
-                    
-                    {existingDoc && (
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(existingDoc.status)}
-                        {getStatusBadge(existingDoc.status)}
-                      </div>
-                    )}
-                  </div>
-
-                  {existingDoc ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3 p-2 bg-muted rounded-lg">
-                        {existingDoc.kind !== 'cnpj' && (
-                          <ImageWithFallback
-                            src={existingDoc.fileUrl}
-                            alt={existingDoc.fileName}
-                            width={48}
-                            height={36}
-                            className="rounded object-cover"
-                          />
-                        )}
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{existingDoc.fileName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Enviado em {new Date(existingDoc.uploadedAt).toLocaleDateString('pt-BR')}
-                          </p>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="ghost">
-                            <Eye className="w-3 h-3" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => handleDeleteDocument(existingDoc.id)}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {existingDoc.feedback && (
-                        <Alert variant="destructive">
-                          <AlertDescription className="text-sm">
-                            <strong>Feedback:</strong> {existingDoc.feedback}
-                          </AlertDescription>
-                        </Alert>
-                      )}
-
-                      {existingDoc.status === 'REJECTED' && (
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => handleFileUpload(docType.key)}
-                          className="w-full"
-                        >
-                          <Upload className="w-3 h-3 mr-2" />
-                          Reenviar Documento
-                        </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <Button 
-                      variant="outline" 
-                      onClick={() => handleFileUpload(docType.key)}
-                      className="w-full"
-                    >
-                      <Upload className="w-4 h-4 mr-2" />
-                      Enviar {docType.label}
-                    </Button>
-                  )}
-                </div>
-              )
-            })}
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-              <div className="flex items-start gap-2">
-                <FileText className="w-4 h-4 text-blue-600 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-medium text-blue-900">Dicas importantes:</p>
-                  <ul className="text-blue-700 mt-1 space-y-1">
-                    <li>• Fotos devem estar nítidas e bem iluminadas</li>
-                    <li>• Documentos não devem estar vencidos</li>
-                    <li>• A selfie deve mostrar claramente seu rosto e o documento</li>
-                    <li>• Arquivos em JPG, PNG ou PDF até 5MB</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>

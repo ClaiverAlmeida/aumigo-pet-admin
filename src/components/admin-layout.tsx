@@ -6,7 +6,7 @@ import { Separator } from './ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu'
 import { ImageWithFallback } from './figma/ImageWithFallback'
-import exampleImage from 'figma:asset/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
+import exampleImage from '../assets/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
 import {
   Search,
   Command,

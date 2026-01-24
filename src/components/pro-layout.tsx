@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Badge } from './ui/badge'
 import { Header } from './header'
 import { Footer } from './footer'
+import { cn } from './ui/utils'
 import { 
   LayoutDashboard, 
   Briefcase, 
@@ -16,7 +17,7 @@ import {
   Megaphone,
   Bell
 } from 'lucide-react'
-import exampleImage from 'figma:asset/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
+import exampleImage from '../assets/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
 
 interface User {
   id: string
@@ -43,10 +44,10 @@ const navigationItems = [
   { id: 'services', label: 'Serviços', icon: Briefcase },
   { id: 'availability', label: 'Agenda', icon: Calendar },
   { id: 'bookings', label: 'Agendamentos', icon: Calendar },
-  { id: 'ads', label: 'ADS (Impulsionar)', icon: Megaphone },
+  // { id: 'ads', label: 'ADS (Impulsionar)', icon: Megaphone },
   { id: 'finance', label: 'Financeiro', icon: DollarSign },
   { id: 'reviews', label: 'Avaliações', icon: Star },
-  { id: 'chat', label: 'Chat', icon: MessageSquare },
+  // { id: 'chat', label: 'Chat', icon: MessageSquare },
   { id: 'notifications', label: 'Notificações', icon: Bell },
   { id: 'settings', label: 'Configurações', icon: Settings },
 ]
@@ -103,7 +104,10 @@ export function ProLayout({ children, currentPage, onNavigate, user, onLogout }:
                         <SidebarMenuButton
                           onClick={() => onNavigate(item.id)}
                           isActive={currentPage === item.id}
-                          className="w-full justify-start text-muted-foreground hover:text-aumigo-teal hover:bg-muted data-[active=true]:bg-aumigo-orange data-[active=true]:text-white"
+                          className={cn(
+                            "w-full justify-start text-muted-foreground hover:text-aumigo-teal hover:bg-muted",
+                            currentPage === item.id && "!bg-aumigo-orange !text-white"
+                          )}
                         >
                           <Icon className="w-4 h-4" />
                           <span>{item.label}</span>

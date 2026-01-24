@@ -17,7 +17,9 @@ import { AdminLayout } from './components/admin-layout'
 import { AdminDashboard } from './components/admin-dashboard'
 import { RouteSwitcher } from './components/route-switcher'
 import { Toaster } from './components/ui/sonner'
-import exampleImage from 'figma:asset/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
+import { useAuth } from './contexts/AuthContext'
+import { useRouter } from './hooks/useRouter'
+import exampleImage from './assets/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
 
 interface User {
   id: string
@@ -40,82 +42,86 @@ interface AdminUser {
 }
 
 export default function App() {
+  const { user, adminUser, loading, signOut, signOutAdmin } = useAuth()
+  const { currentPath, navigate } = useRouter()
   const [currentPage, setCurrentPage] = useState('overview')
-  const [user, setUser] = useState<User | null>(null)
-  const [adminUser, setAdminUser] = useState<AdminUser | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const [currentMode, setCurrentMode] = useState<'pro' | 'admin' | 'select'>('select')
 
-  // Verificar se há um usuário logado no localStorage
+  // Verificar modo e página baseado na URL
   useEffect(() => {
-    const checkAuthState = () => {
-      try {
-        // Verificar se estamos na rota admin
-        const path = window.location.pathname
-        if (path.includes('/admin')) {
-          setCurrentMode('admin')
-          const savedAdminUser = localStorage.getItem('aumigopet_admin')
-          if (savedAdminUser) {
-            const adminData = JSON.parse(savedAdminUser)
-            setAdminUser(adminData)
-            setCurrentPage('dashboard')
-          }
-        } else if (path === '/' || path === '/pro') {
-          setCurrentMode('pro')
-          const savedUser = localStorage.getItem('aumigopet_user')
-          if (savedUser) {
-            const userData = JSON.parse(savedUser)
-            setUser(userData)
-            
-            // Se é o primeiro login e o KYC está pendente, redirecionar para KYC
-            if (userData.isFirstLogin && userData.kycStatus === 'PENDING') {
-              setCurrentPage('kyc')
-            }
-          }
-        } else {
-          // Se a URL não especifica o modo, mostrar seletor
-          setCurrentMode('select')
-        }
-      } catch (error) {
-        console.error('Erro ao verificar estado de autenticação:', error)
-        // Limpar dados corrompidos
-        localStorage.removeItem('aumigopet_user')
-        localStorage.removeItem('aumigopet_admin')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    checkAuthState()
-  }, [])
-
-  const handleLogin = (userData: User) => {
-    setUser(userData)
-    localStorage.setItem('aumigopet_user', JSON.stringify(userData))
+    const path = currentPath
     
-    // Se é o primeiro login e o KYC está pendente, redirecionar para KYC
+    // Modo Admin
+    if (path.startsWith('/admin')) {
+      setCurrentMode('admin')
+      // Extrair página da rota /admin/:page
+      const pageMatch = path.match(/^\/admin\/(.+)$/)
+      if (pageMatch) {
+        setCurrentPage(pageMatch[1])
+      } else if (path === '/admin') {
+        setCurrentPage('dashboard')
+        navigate('/admin/dashboard')
+      }
+    } 
+    // Modo Pro
+    else if (path.startsWith('/pro') || path === '/' || path === '') {
+      setCurrentMode('pro')
+      // Extrair página da rota /pro/:page
+      const pageMatch = path.match(/^\/(?:pro\/)?(.+)$/)
+      if (pageMatch && pageMatch[1] !== 'pro') {
+        setCurrentPage(pageMatch[1])
+      } else {
+        // Se é o primeiro login e o KYC está pendente, redirecionar para KYC
+        if (user?.isFirstLogin && user?.kycStatus === 'PENDING') {
+          setCurrentPage('kyc')
+          navigate('/pro/kyc')
+        } else {
+          setCurrentPage('overview')
+          if (path === '/' || path === '') {
+            navigate('/pro/overview')
+          }
+        }
+      }
+    } 
+    // Seletor de modo
+    else {
+      setCurrentMode('select')
+    }
+  }, [currentPath, user, adminUser, navigate])
+
+  // Handlers de login - redirecionar usando rotas
+  const handleLogin = (userData: User) => {
+    // O contexto já gerencia o estado, apenas redirecionar
     if (userData.isFirstLogin && userData.kycStatus === 'PENDING') {
-      setCurrentPage('kyc')
+      navigate('/pro/kyc')
     } else {
-      setCurrentPage('overview')
+      navigate('/pro/overview')
     }
   }
 
   const handleAdminLogin = (adminData: AdminUser) => {
-    setAdminUser(adminData)
-    localStorage.setItem('aumigopet_admin', JSON.stringify(adminData))
-    setCurrentPage('dashboard')
+    // O contexto já gerencia o estado, apenas redirecionar
+    navigate('/admin/dashboard')
   }
 
-  const handleLogout = () => {
+  // Logout - Seguindo EXATAMENTE o padrão do app
+  const handleLogout = async () => {
     if (currentMode === 'admin') {
-      setAdminUser(null)
-      localStorage.removeItem('aumigopet_admin')
-      setCurrentPage('dashboard')
+      await signOutAdmin()
+      navigate('/admin/dashboard')
     } else {
-      setUser(null)
-      localStorage.removeItem('aumigopet_user')
-      setCurrentPage('overview')
+      await signOut()
+      navigate('/pro/overview')
+    }
+  }
+
+  // Handler de navegação que atualiza a URL
+  const handleNavigate = (page: string) => {
+    setCurrentPage(page)
+    if (currentMode === 'admin') {
+      navigate(`/admin/${page}`)
+    } else {
+      navigate(`/pro/${page}`)
     }
   }
 
@@ -160,14 +166,14 @@ export default function App() {
   const handleModeSelect = (mode: 'pro' | 'admin') => {
     setCurrentMode(mode)
     if (mode === 'admin') {
-      setCurrentPage('dashboard')
+      navigate('/admin/dashboard')
     } else {
-      setCurrentPage('overview')
+      navigate('/pro/overview')
     }
   }
 
-  // Tela de loading
-  if (isLoading) {
+  // Tela de loading - Seguindo padrão do app
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -216,7 +222,7 @@ export default function App() {
       <div className="min-h-screen bg-background">
         <AdminLayout 
           currentPage={currentPage} 
-          onNavigate={setCurrentPage}
+          onNavigate={handleNavigate}
           user={adminUser}
           onLogout={handleLogout}
         >
@@ -241,7 +247,7 @@ export default function App() {
       <div className="min-h-screen bg-background">
         <ProLayout 
           currentPage={currentPage} 
-          onNavigate={setCurrentPage}
+          onNavigate={handleNavigate}
           user={user}
           onLogout={handleLogout}
         >

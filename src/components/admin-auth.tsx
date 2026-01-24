@@ -6,7 +6,7 @@ import { Label } from './ui/label'
 import { Alert, AlertDescription } from './ui/alert'
 import { Checkbox } from './ui/checkbox'
 import { ImageWithFallback } from './figma/ImageWithFallback'
-import exampleImage from 'figma:asset/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
+import exampleImage from '../assets/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
 import {
   Eye,
   EyeOff,
@@ -20,6 +20,7 @@ import {
   BarChart3
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuth } from '../contexts/AuthContext'
 
 interface AdminUser {
   id: string
@@ -35,6 +36,7 @@ interface AdminAuthProps {
 }
 
 export function AdminAuth({ onLogin }: AdminAuthProps) {
+  const { signInAdmin } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   
@@ -61,24 +63,38 @@ export function AdminAuth({ onLogin }: AdminAuthProps) {
     setIsLoading(true)
     toast.loading('Validando credenciais...', { id: 'admin-auth-loading' })
 
-    // Simular API call com validação mais rigorosa para admin
-    setTimeout(() => {
-      toast.dismiss('admin-auth-loading')
-      
-      // Mock de dados do admin
-      const adminData: AdminUser = {
-        id: 'admin_1',
-        name: 'Admin AuMigoPet',
-        email: loginData.email,
-        role: 'super_admin',
-        permissions: ['kyc_manage', 'users_manage', 'finance_manage', 'system_manage'],
-        lastLogin: new Date().toISOString()
-      }
+    try {
+      // Usar contexto de autenticação - Seguindo padrão do app
+      const result = await signInAdmin(loginData.email, loginData.password)
 
+      toast.dismiss('admin-auth-loading')
+
+      if (result.success) {
+        setIsLoading(false)
+        toast.success('Login realizado com sucesso')
+        
+        // Mapear dados para o formato esperado pelo onLogin
+        const storedAdmin = localStorage.getItem('aumigopet_admin')
+        if (storedAdmin) {
+          const adminData = JSON.parse(storedAdmin)
+          onLogin({
+            id: adminData.id,
+            name: adminData.name,
+            email: adminData.email,
+            role: adminData.role,
+            permissions: adminData.permissions || [],
+            lastLogin: adminData.lastLogin || new Date().toISOString()
+          })
+        }
+      } else {
+        setIsLoading(false)
+        toast.error(result.error || 'Erro ao fazer login')
+      }
+    } catch (error: any) {
+      toast.dismiss('admin-auth-loading')
       setIsLoading(false)
-      toast.success('Login realizado com sucesso')
-      onLogin(adminData)
-    }, 2000)
+      toast.error(error.message || 'Erro ao fazer login')
+    }
   }
 
   const handleForgotPassword = async (e: React.FormEvent) => {

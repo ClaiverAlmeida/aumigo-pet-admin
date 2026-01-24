@@ -1,11 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
-import { Textarea } from './ui/textarea'
 import { Switch } from './ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Separator } from './ui/separator'
@@ -36,17 +35,19 @@ import {
   X
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { usersService } from '../services/users.service'
 
 interface ProfileData {
   name: string
   email: string
-  phone: string
-  bio: string
-  location: string
-  specialties: string[]
-  experience: string
-  languages: string[]
-  avatar: string
+  phone?: string
+  cpf?: string
+  birthDate?: string
+  address?: string
+  city?: string
+  state?: string
+  zipCode?: string
+  profilePicture?: string
 }
 
 interface NotificationSettings {
@@ -91,16 +92,31 @@ interface PrivacySettings {
 export function ProSettings() {
   const [activeTab, setActiveTab] = useState('profile')
   const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
   const [profileData, setProfileData] = useState<ProfileData>({
-    name: 'Claiver Almeida',
-    email: 'maria.souza@email.com',
-    phone: '(11) 99999-9999',
-    bio: 'Profissional dedicada ao cuidado de pets há mais de 8 anos. Especializada em banho, tosa e adestramento.',
-    location: 'São Paulo, SP',
-    specialties: ['Banho e Tosa', 'Adestramento', 'Pet Sitting'],
-    experience: '8 anos',
-    languages: ['Português', 'Inglês'],
-    avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face'
+    name: '',
+    email: '',
+    phone: '',
+    cpf: '',
+    birthDate: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    profilePicture: ''
+  })
+  const [originalData, setOriginalData] = useState<ProfileData>({
+    name: '',
+    email: '',
+    phone: '',
+    cpf: '',
+    birthDate: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    profilePicture: ''
   })
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
@@ -142,8 +158,61 @@ export function ProSettings() {
     dataSharing: false
   })
 
-  const handleSaveProfile = () => {
-    // Simulação de validação
+  // Carregar dados do usuário ao montar o componente
+  useEffect(() => {
+    const loadUserData = async () => {
+      setIsLoading(true)
+      try {
+        const result = await usersService.getMyProfile()
+        if (result.success && result.data) {
+          const user = result.data
+          
+          // Formatar birthDate se vier como ISO string do backend
+          let formattedBirthDate = ''
+          if (user.birthDate) {
+            try {
+              // Se vier como ISO string, converter para formato YYYY-MM-DD
+              const date = new Date(user.birthDate)
+              if (!isNaN(date.getTime())) {
+                formattedBirthDate = date.toISOString().split('T')[0]
+              } else {
+                formattedBirthDate = user.birthDate
+              }
+            } catch {
+              formattedBirthDate = user.birthDate
+            }
+          }
+
+          const loadedData: ProfileData = {
+            name: user.name || '',
+            email: user.email || '',
+            phone: user.phone || '',
+            cpf: user.cpf || '',
+            birthDate: formattedBirthDate,
+            address: user.address || '',
+            city: user.city || '',
+            state: user.state || '',
+            zipCode: user.zipCode || '',
+            profilePicture: user.profilePicture || ''
+          }
+          setProfileData(loadedData)
+          setOriginalData(loadedData) // Armazenar dados originais para comparação
+        } else {
+          toast.error(result.error || 'Erro ao carregar dados do usuário')
+        }
+      } catch (error: any) {
+        toast.error('Erro ao carregar dados do usuário')
+        console.error('Erro ao carregar dados:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadUserData()
+  }, [])
+
+  const handleSaveProfile = async () => {
+    // Validação
     if (!profileData.name.trim()) {
       toast.error('Nome é obrigatório!')
       return
@@ -152,20 +221,118 @@ export function ProSettings() {
       toast.error('Email é obrigatório!')
       return
     }
-    if (!profileData.phone.trim()) {
-      toast.error('Telefone é obrigatório!')
-      return
-    }
+    // Phone, CPF e outros campos são opcionais, não validar
 
-    // Simulação de loading
-    toast.loading('Salvando informações do perfil...')
+    setIsSaving(true)
+    const loadingToast = toast.loading('Salvando informações do perfil...')
     
-    setTimeout(() => {
-      toast.dismiss()
-      toast.success('✅ Perfil atualizado com sucesso!', {
-        description: 'Suas informações pessoais foram salvas e já estão visíveis no seu perfil.'
-      })
-    }, 1500)
+    try {
+      // Comparar dados atuais com originais e enviar apenas o que mudou
+      const updateData: any = {}
+
+      // Verificar se name mudou
+      if (profileData.name.trim() !== originalData.name.trim()) {
+        updateData.name = profileData.name.trim()
+      }
+
+      // Verificar se email mudou
+      if (profileData.email.trim() !== originalData.email.trim()) {
+        updateData.email = profileData.email.trim()
+      }
+
+      // Verificar se phone mudou
+      if ((profileData.phone || '') !== (originalData.phone || '')) {
+        updateData.phone = profileData.phone?.trim() || undefined
+      }
+
+      // Verificar se cpf mudou
+      if ((profileData.cpf || '') !== (originalData.cpf || '')) {
+        updateData.cpf = profileData.cpf?.trim() || undefined
+      }
+
+      // Verificar se birthDate mudou
+      if ((profileData.birthDate || '') !== (originalData.birthDate || '')) {
+        updateData.birthDate = profileData.birthDate?.trim() || undefined
+      }
+
+      // Verificar se address mudou
+      if ((profileData.address || '') !== (originalData.address || '')) {
+        updateData.address = profileData.address?.trim() || undefined
+      }
+
+      // Verificar se city mudou
+      if ((profileData.city || '') !== (originalData.city || '')) {
+        updateData.city = profileData.city?.trim() || undefined
+      }
+
+      // Verificar se state mudou
+      if ((profileData.state || '') !== (originalData.state || '')) {
+        updateData.state = profileData.state?.trim() || undefined
+      }
+
+      // Verificar se zipCode mudou
+      if ((profileData.zipCode || '') !== (originalData.zipCode || '')) {
+        updateData.zipCode = profileData.zipCode?.trim() || undefined
+      }
+
+      // Se não houver mudanças, não fazer update
+      if (Object.keys(updateData).length === 0) {
+        toast.dismiss(loadingToast)
+        toast.info('Nenhuma alteração detectada')
+        setIsSaving(false)
+        return
+      }
+
+      const result = await usersService.updateMyProfile(updateData)
+      
+      toast.dismiss(loadingToast)
+
+      if (result.success && result.data) {
+        toast.success('✅ Perfil atualizado com sucesso!', {
+          description: 'Suas informações pessoais foram salvas e já estão visíveis no seu perfil.'
+        })
+        
+        // Atualizar o estado local com os dados retornados
+        const user = result.data
+        // Formatar birthDate se vier como ISO string do backend
+        let formattedBirthDate = ''
+        if (user.birthDate) {
+          try {
+            const date = new Date(user.birthDate)
+            if (!isNaN(date.getTime())) {
+              formattedBirthDate = date.toISOString().split('T')[0]
+            } else {
+              formattedBirthDate = user.birthDate
+            }
+          } catch {
+            formattedBirthDate = user.birthDate
+          }
+        }
+
+        const updatedData: ProfileData = {
+          name: user.name || '',
+          email: user.email || '',
+          phone: user.phone || '',
+          cpf: user.cpf || '',
+          birthDate: formattedBirthDate,
+          address: user.address || '',
+          city: user.city || '',
+          state: user.state || '',
+          zipCode: user.zipCode || '',
+          profilePicture: user.profilePicture || ''
+        }
+        setProfileData(updatedData)
+        setOriginalData(updatedData) // Atualizar dados originais após sucesso
+      } else {
+        toast.error(result.error || 'Erro ao atualizar perfil')
+      }
+    } catch (error: any) {
+      toast.dismiss(loadingToast)
+      toast.error('Erro ao atualizar perfil')
+      console.error('Erro ao atualizar perfil:', error)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleSaveNotifications = () => {
@@ -251,7 +418,7 @@ export function ProSettings() {
           <Badge className="bg-aumigo-mint text-white">
             Perfil Aprovado
           </Badge>
-          <Button 
+          {/* <Button 
             variant="outline" 
             className="border-aumigo-blue text-aumigo-blue hover:bg-aumigo-blue hover:text-white"
             onClick={() => {
@@ -266,7 +433,7 @@ export function ProSettings() {
           >
             <Download className="h-4 w-4 mr-2" />
             Backup de Dados
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -274,11 +441,11 @@ export function ProSettings() {
       <div className="flex-1 p-6 overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
           <TabsList className="grid w-full grid-cols-6 mb-6">
-            <TabsTrigger value="profile" className="flex items-center gap-2">
+            {/* <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Perfil
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center gap-2">
+            </TabsTrigger> */}
+            {/* <TabsTrigger value="notifications" className="flex items-center gap-2">
               <Bell className="h-4 w-4" />
               Notificações
             </TabsTrigger>
@@ -293,11 +460,11 @@ export function ProSettings() {
             <TabsTrigger value="privacy" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Privacidade
-            </TabsTrigger>
-            <TabsTrigger value="general" className="flex items-center gap-2">
+            </TabsTrigger> */}
+            {/* <TabsTrigger value="general" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Geral
-            </TabsTrigger>
+            </TabsTrigger> */}
           </TabsList>
 
           <div className="flex-1 overflow-auto">
@@ -314,11 +481,17 @@ export function ProSettings() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <p className="text-muted-foreground">Carregando dados do usuário...</p>
+                    </div>
+                  ) : (
+                    <>
                   {/* Avatar Section */}
                   <div className="flex items-center gap-6">
                     <div className="relative">
                       <Avatar className="h-24 w-24">
-                        <AvatarImage src={profileData.avatar} alt={profileData.name} />
+                        <AvatarImage src={profileData.profilePicture} alt={profileData.name} />
                         <AvatarFallback className="text-xl bg-aumigo-blue/20 text-aumigo-teal">
                           {profileData.name.split(' ').map(n => n[0]).join('')}
                         </AvatarFallback>
@@ -377,19 +550,20 @@ export function ProSettings() {
                   {/* Basic Info */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="name">Nome Completo</Label>
+                      <Label htmlFor="name">Nome Completo *</Label>
                       <Input
                         id="name"
                         value={profileData.name}
                         onChange={(e) => setProfileData({...profileData, name: e.target.value})}
                         placeholder="Seu nome completo"
+                        required
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="phone">Telefone</Label>
                       <Input
                         id="phone"
-                        value={profileData.phone}
+                        value={profileData.phone || ''}
                         onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
                         placeholder="(11) 99999-9999"
                       />
@@ -398,99 +572,84 @@ export function ProSettings() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email">Email *</Label>
                       <Input
                         id="email"
                         type="email"
                         value={profileData.email}
                         onChange={(e) => setProfileData({...profileData, email: e.target.value})}
                         placeholder="seu@email.com"
+                        required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="location">Localização</Label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="location"
-                          className="pl-10"
-                          value={profileData.location}
-                          onChange={(e) => setProfileData({...profileData, location: e.target.value})}
-                          placeholder="Cidade, Estado"
-                        />
-                      </div>
+                      <Label htmlFor="cpf">CPF</Label>
+                      <Input
+                        id="cpf"
+                        value={profileData.cpf || ''}
+                        onChange={(e) => setProfileData({...profileData, cpf: e.target.value})}
+                        placeholder="000.000.000-00"
+                      />
                     </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="bio">Biografia</Label>
-                    <Textarea
-                      id="bio"
-                      rows={4}
-                      value={profileData.bio}
-                      onChange={(e) => setProfileData({...profileData, bio: e.target.value})}
-                      placeholder="Conte sobre sua experiência e especialidades..."
-                      className="resize-none"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {profileData.bio.length}/500 caracteres
-                    </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Especialidades</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {profileData.specialties.map((specialty, index) => (
-                          <Badge key={index} variant="secondary" className="bg-aumigo-blue/10 text-aumigo-blue border-aumigo-blue/30">
-                            {specialty}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-4 w-4 p-0 ml-1 hover:bg-transparent"
-                              onClick={() => {
-                                const newSpecialties = profileData.specialties.filter((_, i) => i !== index)
-                                setProfileData({...profileData, specialties: newSpecialties})
-                              }}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </Badge>
-                        ))}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 px-2 text-xs border-dashed"
-                          onClick={() => {
-                            toast.loading('Adicionando nova especialidade...')
-                            setTimeout(() => {
-                              toast.dismiss()
-                              toast.success('➕ Especialidade adicionada!', {
-                                description: 'Nova especialidade foi incluída no seu perfil.'
-                              })
-                            }, 1000)
-                          }}
-                        >
-                          + Adicionar
-                        </Button>
+                      <Label htmlFor="birthDate">Data de Nascimento</Label>
+                      <Input
+                        id="birthDate"
+                        type="date"
+                        value={profileData.birthDate || ''}
+                        onChange={(e) => setProfileData({...profileData, birthDate: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Address Info */}
+                  <div className="space-y-2">
+                    <Label htmlFor="address">Endereço</Label>
+                    <Input
+                      id="address"
+                      value={profileData.address || ''}
+                      onChange={(e) => setProfileData({...profileData, address: e.target.value})}
+                      placeholder="Rua, número, complemento"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="city">Cidade</Label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="city"
+                          className="pl-10"
+                          value={profileData.city || ''}
+                          onChange={(e) => setProfileData({...profileData, city: e.target.value})}
+                          placeholder="Cidade"
+                        />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="experience">Experiência</Label>
-                      <Select value={profileData.experience} onValueChange={(value) => 
-                        setProfileData({...profileData, experience: value})}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1 ano">1 ano</SelectItem>
-                          <SelectItem value="2 anos">2 anos</SelectItem>
-                          <SelectItem value="3-5 anos">3-5 anos</SelectItem>
-                          <SelectItem value="5-8 anos">5-8 anos</SelectItem>
-                          <SelectItem value="8+ anos">8+ anos</SelectItem>
-                          <SelectItem value="10+ anos">10+ anos</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="state">Estado</Label>
+                      <Input
+                        id="state"
+                        value={profileData.state || ''}
+                        onChange={(e) => setProfileData({...profileData, state: e.target.value})}
+                        placeholder="UF"
+                        maxLength={2}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="zipCode">CEP</Label>
+                      <Input
+                        id="zipCode"
+                        value={profileData.zipCode || ''}
+                        onChange={(e) => setProfileData({...profileData, zipCode: e.target.value})}
+                        placeholder="00000-000"
+                      />
                     </div>
                   </div>
 
@@ -498,29 +657,26 @@ export function ProSettings() {
                     <Button 
                       variant="outline" 
                       onClick={() => {
-                        // Reset para valores originais
-                        setProfileData({
-                          name: 'Claiver Almeida',
-                          email: 'maria.souza@email.com',
-                          phone: '(11) 99999-9999',
-                          bio: 'Profissional dedicada ao cuidado de pets há mais de 8 anos. Especializada em banho, tosa e adestramento.',
-                          location: 'São Paulo, SP',
-                          specialties: ['Banho e Tosa', 'Adestramento', 'Pet Sitting'],
-                          experience: '8 anos',
-                          languages: ['Português', 'Inglês'],
-                          avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face'
-                        })
+                        // Restaurar dados originais
+                        setProfileData(originalData)
                         toast.info('🔄 Alterações desfeitas')
                       }}
+                      disabled={isLoading || isSaving}
                     >
                       <X className="h-4 w-4 mr-2" />
                       Cancelar
                     </Button>
-                    <Button onClick={handleSaveProfile} className="bg-aumigo-orange hover:bg-aumigo-orange/90">
+                    <Button 
+                      onClick={handleSaveProfile} 
+                      className="bg-aumigo-orange hover:bg-aumigo-orange/90"
+                      disabled={isLoading || isSaving}
+                    >
                       <Save className="h-4 w-4 mr-2" />
-                      Salvar Alterações
+                      {isSaving ? 'Salvando...' : 'Salvar Alterações'}
                     </Button>
                   </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
