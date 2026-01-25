@@ -11,6 +11,8 @@ import {
 } from 'lucide-react'
 
 export function Footer() {
+  return null
+  /* Comentado temporariamente
   return (
     <footer className="bg-background border-t border-border mt-auto">
       <div className="px-6 py-8">
@@ -46,14 +48,22 @@ export function Footer() {
                 </Button>
               </li>
               <li>
-                <Button variant="ghost" size="sm" className="h-auto p-0 text-muted-foreground hover:text-aumigo-teal justify-start">
+                <button 
+                  type="button" 
+                  className="text-sm text-muted-foreground hover:text-aumigo-teal text-aumigo-orange hover:underline h-auto p-0 bg-transparent border-0 cursor-pointer"
+                  onClick={() => window.open('https://aumigopet.com.br/termos-de-uso/', '_blank', 'noopener,noreferrer')}
+                >
                   Termos de Serviço
-                </Button>
+                </button>
               </li>
               <li>
-                <Button variant="ghost" size="sm" className="h-auto p-0 text-muted-foreground hover:text-aumigo-teal justify-start">
+                <button 
+                  type="button" 
+                  className="text-sm text-muted-foreground hover:text-aumigo-teal text-aumigo-orange hover:underline h-auto p-0 bg-transparent border-0 cursor-pointer"
+                  onClick={() => window.open('https://aumigopet.com.br/politica-de-privacidade/', '_blank', 'noopener,noreferrer')}
+                >
                   Política de Privacidade
-                </Button>
+                </button>
               </li>
               <li>
                 <Button variant="ghost" size="sm" className="h-auto p-0 text-muted-foreground hover:text-aumigo-teal justify-start">
@@ -104,4 +114,5 @@ export function Footer() {
       </div>
     </footer>
   )
+  */
 }

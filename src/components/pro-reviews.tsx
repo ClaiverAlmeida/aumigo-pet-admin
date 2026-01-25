@@ -28,103 +28,21 @@ import {
 } from './ui/dropdown-menu'
 
 
-// Mock data para avaliações
-const reviewsData = [
-  {
-    id: 1,
-    client: {
-      name: "Ana Clara Silva",
-      avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face",
-      pets: ["Luna", "Bella"]
-    },
-    service: "Dr. Ana Veterinária",
-    rating: 5,
-    date: new Date(2025, 0, 15),
-    comment: "Excelente profissional! Minha Luna ficou linda e cheirosa. O cuidado e carinho com os animais é notável. Super recomendo!",
-    response: null,
-    helpful: 12,
-    photos: 2
-  },
-  {
-    id: 2,
-    client: {
-      name: "Carlos Eduardo",
-      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face",
-      pets: ["Rex"]
-    },
-    service: "Consulta Veterinária",
-    rating: 5,
-    date: new Date(2025, 0, 12),
-    comment: "Atendimento impecável! Dr. Maria foi muito atenciosa e explicou tudo detalhadamente sobre a saúde do Rex. Consultório bem equipado.",
-    response: {
-      text: "Muito obrigada pelo feedback, Carlos! Fico feliz em saber que o Rex está bem. Qualquer dúvida, estarei à disposição!",
-      date: new Date(2025, 0, 13)
-    },
-    helpful: 8,
-    photos: 0
-  },
-  {
-    id: 3,
-    client: {
-      name: "Mariana Santos",
-      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face",
-      pets: ["Mimi", "Totó"]
-    },
-    service: "Adestramento",
-    rating: 4,
-    date: new Date(2025, 0, 10),
-    comment: "Ótimo trabalho! O Totó melhorou muito o comportamento. Gostaria de mais sessões práticas, mas no geral estou satisfeita.",
-    response: null,
-    helpful: 5,
-    photos: 1
-  },
-  {
-    id: 4,
-    client: {
-      name: "Pedro Lima",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face",
-      pets: ["Buddy"]
-    },
-    service: "Vacinação",
-    rating: 5,
-    date: new Date(2025, 0, 8),
-    comment: "Processo muito tranquilo. Buddy nem sentiu a aplicação. Profissional muito experiente e cuidadosa. Voltarei em breve!",
-    response: {
-      text: "Obrigada, Pedro! O Buddy é um amor. Aguardo vocês para a próxima dose!",
-      date: new Date(2025, 0, 8)
-    },
-    helpful: 15,
-    photos: 0
-  },
-  {
-    id: 5,
-    client: {
-      name: "Juliana Costa",
-      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=40&h=40&fit=crop&crop=face",
-      pets: ["Princesa"]
-    },
-    service: "Dr. Ana Veterinária",
-    rating: 3,
-    date: new Date(2025, 0, 5),
-    comment: "O serviço foi ok, mas demorou mais que o esperado. A Princesa ficou bem, mas esperava um resultado melhor no corte.",
-    response: null,
-    helpful: 2,
-    photos: 0
-  }
-]
+// Mock data para avaliações - Estado inicial sem avaliações
+const reviewsData: any[] = []
 
 const statsData = {
-  averageRating: 4.6,
-  totalReviews: 127,
+  averageRating: 0,
+  totalReviews: 0,
   ratingDistribution: [
-    { stars: 5, count: 89, percentage: 70 },
-    { stars: 4, count: 25, percentage: 20 },
-    { stars: 3, count: 8, percentage: 6 },
-    { stars: 2, count: 3, percentage: 2 },
-    { stars: 1, count: 2, percentage: 2 }
+    { stars: 5, count: 0, percentage: 0 },
+    { stars: 4, count: 0, percentage: 0 },
+    { stars: 3, count: 0, percentage: 0 },
+    { stars: 2, count: 0, percentage: 0 },
+    { stars: 1, count: 0, percentage: 0 }
   ],
-  monthlyGrowth: 12,
-  responseRate: 85
+  monthlyGrowth: 0,
+  responseRate: 0
 }
 
 function StarRating({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" | "lg" }) {
@@ -309,9 +227,23 @@ export function ProReviews() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="text-center">
-                <div className="text-4xl font-bold text-[#2E6F79] mb-2">{statsData.averageRating}</div>
-                <StarRating rating={Math.round(statsData.averageRating)} size="md" />
-                <p className="text-[#6B7280] mt-1">{statsData.totalReviews} avaliações</p>
+                <div className="text-4xl font-bold text-[#2E6F79] mb-2">
+                  {statsData.averageRating > 0 ? statsData.averageRating.toFixed(1) : '-'}
+                </div>
+                {statsData.averageRating > 0 ? (
+                  <StarRating rating={Math.round(statsData.averageRating)} size="md" />
+                ) : (
+                  <div className="flex items-center justify-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star key={star} className="w-5 h-5 text-gray-300" />
+                    ))}
+                  </div>
+                )}
+                <p className="text-[#6B7280] mt-1">
+                  {statsData.totalReviews === 0 
+                    ? 'Nenhuma avaliação ainda' 
+                    : `${statsData.totalReviews} avaliação${statsData.totalReviews > 1 ? 'ões' : ''}`}
+                </p>
               </div>
               
               <div className="space-y-2">
@@ -335,7 +267,9 @@ export function ProReviews() {
                   <TrendingUp className="h-5 w-5 text-[#8DD9B6]" />
                 </div>
                 <div>
-                  <div className="font-semibold text-[#2E6F79]">+{statsData.monthlyGrowth}%</div>
+                  <div className="font-semibold text-[#2E6F79]">
+                    {statsData.monthlyGrowth > 0 ? `+${statsData.monthlyGrowth}%` : '0%'}
+                  </div>
                   <p className="text-sm text-[#6B7280]">Este mês</p>
                 </div>
               </div>

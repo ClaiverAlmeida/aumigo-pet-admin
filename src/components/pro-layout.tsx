@@ -3,7 +3,7 @@ import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarHead
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Badge } from './ui/badge'
 import { Header } from './header'
-import { Footer } from './footer'
+// import { Footer } from './footer'
 import { cn } from './ui/utils'
 import { 
   LayoutDashboard, 
@@ -31,7 +31,7 @@ interface User {
 }
 
 interface ProLayoutProps {
-  children: ReactNode
+  children: ReactNode 
   currentPage: string
   onNavigate: (page: string) => void
   user?: User
@@ -128,7 +128,7 @@ export function ProLayout({ children, currentPage, onNavigate, user, onLogout }:
             {children}
           </main>
           
-          <Footer />
+          {/* <Footer /> */}
         </div>
       </div>
     </SidebarProvider>

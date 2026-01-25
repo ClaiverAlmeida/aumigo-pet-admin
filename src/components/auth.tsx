@@ -1047,11 +1047,19 @@ export function Auth({ onLogin }: AuthProps) {
                               />
                               <Label htmlFor="terms" className="text-sm text-aumigo-gray leading-5">
                                 Eu li e aceito os{' '}
-                                <button type="button" className="text-aumigo-orange hover:underline">
+                                <button 
+                                  type="button" 
+                                  className="text-aumigo-orange hover:underline cursor-pointer" 
+                                  onClick={() => window.open('https://aumigopet.com.br/termos-de-uso/', '_blank', 'noopener,noreferrer')}
+                                >
                                   Termos de Serviço
                                 </button>{' '}
                                 e a{' '}
-                                <button type="button" className="text-aumigo-orange hover:underline">
+                                <button 
+                                  type="button" 
+                                  className="text-aumigo-orange hover:underline cursor-pointer"
+                                  onClick={() => window.open('https://aumigopet.com.br/politica-de-privacidade/', '_blank', 'noopener,noreferrer')}
+                                >
                                   Política de Privacidade
                                 </button>
                               </Label>
