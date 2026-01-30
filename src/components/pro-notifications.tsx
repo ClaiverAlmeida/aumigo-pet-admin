@@ -21,8 +21,7 @@ export function ProNotifications() {
     markAllAsRead,
     removeNotification,
     clearAll,
-    unreadCount,
-    addNotification
+    unreadCount
   } = useNotifications()
 
   const handleExportNotifications = () => {
@@ -33,30 +32,6 @@ export function ProNotifications() {
         description: 'Arquivo CSV baixado com sucesso.'
       })
     }, 2000)
-  }
-
-  const handleAddTestNotification = () => {
-    addNotification({
-      type: 'booking',
-      priority: 'high',
-      title: 'Novo Agendamento',
-      description: 'João Silva solicitou um passeio para hoje às 15:00',
-      read: false,
-      actionRequired: true,
-      clientName: 'João Silva',
-      clientAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=32&h=32&fit=crop&crop=face',
-      actions: {
-        primary: {
-          label: 'Aceitar',
-          action: () => toast.success('Agendamento aceito!')
-        },
-        secondary: {
-          label: 'Recusar', 
-          action: () => toast.error('Agendamento recusado')
-        }
-      }
-    })
-    toast.success('Notificação de teste adicionada!')
   }
 
   return (
@@ -73,27 +48,16 @@ export function ProNotifications() {
           <Badge className="bg-aumigo-orange text-white text-xs sm:text-sm">
             {unreadCount} não lidas
           </Badge>
-          <div className="flex flex-col xs:flex-row gap-2 w-full sm:w-auto">
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="border-aumigo-blue text-aumigo-blue hover:bg-aumigo-blue hover:text-white text-xs sm:text-sm flex-1 xs:flex-none"
-              onClick={handleExportNotifications}
-            >
-              <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-              <span className="hidden sm:inline">Exportar Histórico</span>
-              <span className="sm:hidden">Exportar</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleAddTestNotification}
-              className="border-aumigo-mint text-aumigo-mint hover:bg-aumigo-mint hover:text-white text-xs sm:text-sm flex-1 xs:flex-none"
-            >
-              <Bell className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-              Teste
-            </Button>
-          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="border-aumigo-blue text-aumigo-blue hover:bg-aumigo-blue hover:text-white text-xs sm:text-sm"
+            onClick={handleExportNotifications}
+          >
+            <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+            <span className="hidden sm:inline">Exportar Histórico</span>
+            <span className="sm:hidden">Exportar</span>
+          </Button>
         </div>
       </div>
 

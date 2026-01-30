@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react'
-import { Card, CardContent } from './ui/card'
+import React, { useState } from 'react'
+import { Card } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { ScrollArea } from './ui/scroll-area'
-import { Separator } from './ui/separator'
 import { 
   Bell, 
   Calendar, 
@@ -13,18 +12,10 @@ import {
   Star, 
   UserPlus,
   AlertTriangle,
-  CheckCircle,
-  Info,
   X,
-  Clock,
-  MapPin,
-  Phone,
-  Mail,
   DollarSign,
-  Heart,
   Settings
 } from 'lucide-react'
-import { toast } from 'sonner@2.0.3'
 
 export interface Notification {
   id: string
@@ -335,85 +326,6 @@ export function NotificationCenter({
 // Hook para gerenciar notificações
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([])
-
-  // Dados mock para demonstração
-  useEffect(() => {
-    const mockNotifications: Notification[] = [
-      {
-        id: '1',
-        type: 'booking',
-        priority: 'high',
-        title: 'Novo Agendamento',
-        description: 'Luna está agendada para banho e tosa amanhã às 14h.',
-        timestamp: new Date(Date.now() - 15 * 60 * 1000), // 15 min atrás
-        read: false,
-        clientName: 'Ana Costa',
-        clientAvatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face',
-        bookingId: 'book_123',
-        actions: {
-          primary: {
-            label: 'Confirmar',
-            action: () => toast.success('Agendamento confirmado!')
-          },
-          secondary: {
-            label: 'Ver detalhes',
-            action: () => console.log('Ver agendamento')
-          }
-        }
-      },
-      {
-        id: '2',
-        type: 'payment',
-        priority: 'medium',
-        title: 'Pagamento Recebido',
-        description: 'Pagamento de R$ 85,00 foi processado com sucesso.',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2h atrás
-        read: false,
-        amount: 85.00
-      },
-      {
-        id: '3',
-        type: 'review',
-        priority: 'low',
-        title: 'Nova Avaliação',
-        description: 'João Silva deixou uma avaliação de 5 estrelas para o banho do Max.',
-        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4h atrás
-        read: true,
-        clientName: 'João Silva',
-        clientAvatar: 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=40&h=40&fit=crop&crop=face',
-        rating: 5
-      },
-      {
-        id: '4',
-        type: 'message',
-        priority: 'medium',
-        title: 'Nova Mensagem',
-        description: 'Carlos Santos enviou uma mensagem sobre o atendimento do Buddy.',
-        timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6h atrás
-        read: true,
-        clientName: 'Carlos Santos',
-        messagePreview: 'Olá, gostaria de reagendar o horário...'
-      },
-      {
-        id: '5',
-        type: 'system',
-        priority: 'urgent',
-        title: 'Documento Pendente',
-        description: 'Seu comprovante de residência precisa ser atualizado.',
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 dia atrás
-        read: false,
-        actionRequired: true,
-        actions: {
-          primary: {
-            label: 'Atualizar',
-            action: () => console.log('Ir para KYC')
-          }
-        }
-      }
-    ]
-
-    setNotifications(mockNotifications)
-  }, [])
 
   const markAsRead = (id: string) => {
     setNotifications(prev => 

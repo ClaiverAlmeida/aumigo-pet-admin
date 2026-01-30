@@ -1,9 +1,7 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
-import { Input } from './ui/input'
-import { Label } from './ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
@@ -11,7 +9,6 @@ import { Progress } from './ui/progress'
 import { 
   DollarSign, 
   TrendingUp, 
-  TrendingDown,
   Calendar,
   Download,
   Eye,
@@ -45,86 +42,29 @@ interface Transaction {
   status: 'paid' | 'refunded' | 'failed'
 }
 
-const mockPayouts: Payout[] = [
-  {
-    id: '1',
-    amount: 31050,
-    fee: 1552,
-    netAmount: 29498,
-    status: 'paid',
-    scheduledFor: '2025-09-05',
-    paidAt: '2025-09-05',
-    reference: 'PAY_001'
-  },
-  {
-    id: '2',
-    amount: 24000,
-    fee: 1200,
-    netAmount: 22800,
-    status: 'scheduled',
-    scheduledFor: '2025-09-10',
-    reference: 'PAY_002'
-  },
-  {
-    id: '3',
-    amount: 18500,
-    fee: 925,
-    netAmount: 17575,
-    status: 'processing',
-    scheduledFor: '2025-09-08',
-    reference: 'PAY_003'
-  }
-]
 
-const mockTransactions: Transaction[] = [
-  {
-    id: '1',
-    bookingId: 'BK001',
-    customerName: 'João Silva',
-    service: 'Dr. Ana Veterinária',
-    amount: 8000,
-    fee: 800,
-    netAmount: 7200,
-    date: '2025-09-05',
-    status: 'paid'
-  },
-  {
-    id: '2',
-    bookingId: 'BK002', 
-    customerName: 'Ana Costa',
-    service: 'Adestramento',
-    amount: 15000,
-    fee: 1500,
-    netAmount: 13500,
-    date: '2025-09-04',
-    status: 'paid'
-  },
-  {
-    id: '3',
-    bookingId: 'BK003',
-    customerName: 'Carlos Santos', 
-    service: 'Consulta Veterinária',
-    amount: 12000,
-    fee: 1200,
-    netAmount: 10800,
-    date: '2025-09-03',
-    status: 'paid'
-  }
-]
-
-const financialSummary = {
-  currentBalance: 47873, // Saldo disponível para saque
-  pendingAmount: 24000, // Valor pendente de próximos repasses  
-  monthEarnings: 89500, // Receita bruta do mês
-  monthFees: 8950, // Taxas do mês
-  monthNet: 80550, // Valor líquido do mês
-  averageTicket: 11875, // Ticket médio
-  transactionCount: 23 // Número de transações
+interface FinancialSummary {
+  currentBalance: number
+  pendingAmount: number
+  monthEarnings: number
+  monthFees: number
+  monthNet: number
+  averageTicket: number
+  transactionCount: number
 }
 
 export function ProFinance() {
-  const [payouts] = useState<Payout[]>(mockPayouts)
-  const [transactions] = useState<Transaction[]>(mockTransactions)
+  const [payouts, setPayouts] = useState<Payout[]>([])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [financialSummary, setFinancialSummary] = useState<FinancialSummary>({
+    currentBalance: 0,
+    pendingAmount: 0,
+    monthEarnings: 0,
+    monthFees: 0,
+    monthNet: 0,
+    averageTicket: 0,
+    transactionCount: 0
+  })
   const [selectedPeriod, setSelectedPeriod] = useState('current-month')
 
   const formatCurrency = (cents: number) => {
@@ -279,7 +219,14 @@ export function ProFinance() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {payouts.map((payout) => (
+                  {payouts.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        Nenhum repasse encontrado
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    payouts.map((payout) => (
                     <TableRow key={payout.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -308,7 +255,8 @@ export function ProFinance() {
                         {getPayoutStatusBadge(payout.status)}
                       </TableCell>
                     </TableRow>
-                  ))}
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -338,7 +286,14 @@ export function ProFinance() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {transactions.map((transaction) => (
+                  {transactions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                        Nenhuma transação encontrada
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    transactions.map((transaction) => (
                     <TableRow key={transaction.id}>
                       <TableCell>
                         <div>
@@ -372,7 +327,8 @@ export function ProFinance() {
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -384,39 +340,52 @@ export function ProFinance() {
             <Card>
               <CardHeader>
                 <CardTitle>Performance Mensal</CardTitle>
-                <CardDescription>Setembro 2025</CardDescription>
+                <CardDescription>
+                  {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span>Meta de Receita</span>
-                    <span>R$ 10.000</span>
-                  </div>
-                  <Progress value={89.5} className="h-2" />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatCurrency(financialSummary.monthEarnings)} de R$ 10.000
-                  </p>
-                </div>
-                
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span>Eficiência (Taxa vs Meta)</span>
-                    <span>10%</span>
-                  </div>
-                  <Progress value={100} className="h-2" />
-                  <p className="text-xs text-green-600 mt-1">Taxa dentro do esperado</p>
-                </div>
+                {financialSummary.monthEarnings > 0 ? (
+                  <>
+                    <div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span>Meta de Receita</span>
+                        <span>R$ 10.000</span>
+                      </div>
+                      <Progress 
+                        value={Math.min((financialSummary.monthEarnings / 100000) * 100, 100)} 
+                        className="h-2" 
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formatCurrency(financialSummary.monthEarnings)} de R$ 10.000
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span>Eficiência (Taxa vs Meta)</span>
+                        <span>10%</span>
+                      </div>
+                      <Progress value={100} className="h-2" />
+                      <p className="text-xs text-green-600 mt-1">Taxa dentro do esperado</p>
+                    </div>
 
-                <div className="grid grid-cols-2 gap-4 pt-4">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold">23</p>
-                    <p className="text-xs text-muted-foreground">Transações</p>
+                    <div className="grid grid-cols-2 gap-4 pt-4">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold">{financialSummary.transactionCount}</p>
+                        <p className="text-xs text-muted-foreground">Transações</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold">98%</p>
+                        <p className="text-xs text-muted-foreground">Taxa Sucesso</p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p className="text-sm">Nenhum dado disponível</p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold">98%</p>
-                    <p className="text-xs text-muted-foreground">Taxa Sucesso</p>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 
@@ -426,50 +395,28 @@ export function ProFinance() {
                 <CardDescription>Por tipo de serviço</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Dr. Ana Veterinária</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-12 bg-muted rounded-full h-2">
-                      <div className="w-8/12 bg-blue-600 h-2 rounded-full"></div>
+                {financialSummary.monthEarnings > 0 ? (
+                  <>
+                    <div className="pt-4 space-y-2 border-t">
+                      <div className="flex justify-between text-sm">
+                        <span>Receita Total</span>
+                        <span className="font-medium">{formatCurrency(financialSummary.monthEarnings)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Taxa Plataforma (10%)</span>
+                        <span>-{formatCurrency(financialSummary.monthFees)}</span>
+                      </div>
+                      <div className="flex justify-between font-medium border-t pt-2">
+                        <span>Valor Líquido</span>
+                        <span>{formatCurrency(financialSummary.monthNet)}</span>
+                      </div>
                     </div>
-                    <span className="text-sm font-medium">45%</span>
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p className="text-sm">Nenhum dado disponível</p>
                   </div>
-                </div>
-                
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Adestramento</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-12 bg-muted rounded-full h-2">
-                      <div className="w-6/12 bg-green-600 h-2 rounded-full"></div>
-                    </div>
-                    <span className="text-sm font-medium">30%</span>
-                  </div>
-                </div>
-                
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Veterinário</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-12 bg-muted rounded-full h-2">
-                      <div className="w-5/12 bg-purple-600 h-2 rounded-full"></div>
-                    </div>
-                    <span className="text-sm font-medium">25%</span>
-                  </div>
-                </div>
-
-                <div className="pt-4 space-y-2 border-t">
-                  <div className="flex justify-between text-sm">
-                    <span>Receita Total</span>
-                    <span className="font-medium">{formatCurrency(financialSummary.monthEarnings)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Taxa Plataforma (10%)</span>
-                    <span>-{formatCurrency(financialSummary.monthFees)}</span>
-                  </div>
-                  <div className="flex justify-between font-medium border-t pt-2">
-                    <span>Valor Líquido</span>
-                    <span>{formatCurrency(financialSummary.monthNet)}</span>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
