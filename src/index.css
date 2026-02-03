@@ -5387,3 +5387,82 @@
     transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0) scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), var(--tw-exit-scale, 1)) rotate(var(--tw-exit-rotate, 0));
   }
 }
+
+/* Garantir que o toast fique acima de modais e dialogs */
+[data-sonner-toaster],
+[data-sonner-toast],
+[data-sonner-toast] > * {
+  z-index: 9999 !important;
+}
+
+/* Garantir background sólido nos toasts */
+[data-sonner-toast] {
+  background: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  backdrop-filter: none !important;
+}
+
+[data-sonner-toast][data-type="success"] {
+  background: rgb(240, 253, 244) !important;
+  color: rgb(20, 83, 45) !important;
+  border-color: rgb(187, 247, 208) !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  background: rgb(254, 242, 242) !important;
+  color: rgb(153, 27, 27) !important;
+  border-color: rgb(254, 202, 202) !important;
+}
+
+[data-sonner-toast][data-type="warning"] {
+  background: rgb(254, 252, 232) !important;
+  color: rgb(113, 63, 18) !important;
+  border-color: rgb(254, 240, 138) !important;
+}
+
+[data-sonner-toast][data-type="info"] {
+  background: rgb(239, 246, 255) !important;
+  color: rgb(30, 58, 138) !important;
+  border-color: rgb(191, 219, 254) !important;
+}
+
+/* Dark mode */
+.dark [data-sonner-toast] {
+  background: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark [data-sonner-toast][data-type="success"] {
+  background: rgb(5, 46, 22) !important;
+  color: rgb(209, 250, 229) !important;
+  border-color: rgb(20, 83, 45) !important;
+}
+
+.dark [data-sonner-toast][data-type="error"] {
+  background: rgb(69, 10, 10) !important;
+  color: rgb(254, 226, 226) !important;
+  border-color: rgb(153, 27, 27) !important;
+}
+
+.dark [data-sonner-toast][data-type="warning"] {
+  background: rgb(66, 32, 6) !important;
+  color: rgb(254, 243, 199) !important;
+  border-color: rgb(113, 63, 18) !important;
+}
+
+.dark [data-sonner-toast][data-type="info"] {
+  background: rgb(23, 37, 84) !important;
+  color: rgb(219, 234, 254) !important;
+  border-color: rgb(30, 58, 138) !important;
+}
+
+/* Descrição do toast: cinza mais escuro para melhor leitura */
+[data-sonner-toast] [data-description] {
+  color: rgb(55, 65, 81) !important; /* gray-700 */
+}
+
+.dark [data-sonner-toast] [data-description] {
+  color: rgb(156, 163, 175) !important; /* gray-400 */
+}

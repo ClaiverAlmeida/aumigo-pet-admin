@@ -24,6 +24,7 @@ export interface UpdateUserData {
   city?: string;
   state?: string;
   zipCode?: string;
+  profilePicture?: string;
 }
 
 export class UsersService {

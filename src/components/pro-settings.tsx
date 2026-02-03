@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
+import Cropper, { type Area } from 'react-easy-crop'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
@@ -9,12 +10,21 @@ import { Switch } from './ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Separator } from './ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
-import { 
-  User, 
-  Bell, 
-  Calendar, 
-  CreditCard, 
-  Shield, 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog'
+import { Slider } from './ui/slider'
+import {
+  User,
+  Bell,
+  Calendar,
+  CreditCard,
+  Shield,
   Settings,
   Camera,
   MapPin,
@@ -32,10 +42,51 @@ import {
   AlertTriangle,
   CheckCircle,
   Save,
-  X
+  X,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { usersService } from '../services/users.service'
+import { filesService } from '../services/files.service'
+
+const OUTPUT_SIZE = 512
+
+async function createCroppedImage(
+  imageSrc: string,
+  cropPercent: Area,
+  outputSize = OUTPUT_SIZE
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.src = imageSrc
+    image.crossOrigin = 'anonymous'
+    image.onload = () => {
+      const nw = image.naturalWidth
+      const nh = image.naturalHeight
+      const x = (cropPercent.x / 100) * nw
+      const y = (cropPercent.y / 100) * nh
+      const w = (cropPercent.width / 100) * nw
+      const h = (cropPercent.height / 100) * nh
+      const canvas = document.createElement('canvas')
+      canvas.width = outputSize
+      canvas.height = outputSize
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('Canvas não disponível'))
+        return
+      }
+      ctx.drawImage(image, x, y, w, h, 0, 0, outputSize, outputSize)
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob)
+          else reject(new Error('Falha ao gerar imagem'))
+        },
+        'image/jpeg',
+        0.9
+      )
+    }
+    image.onerror = () => reject(new Error('Falha ao carregar imagem'))
+  })
+}
 
 interface ProfileData {
   name: string
@@ -94,6 +145,14 @@ export function ProSettings() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const [showCropModal, setShowCropModal] = useState(false)
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null)
+  const [selectedFileName, setSelectedFileName] = useState('')
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [croppedAreaPct, setCroppedAreaPct] = useState<Area | null>(null)
   const [profileData, setProfileData] = useState<ProfileData>({
     name: '',
     email: '',
@@ -210,6 +269,141 @@ export function ProSettings() {
 
     loadUserData()
   }, [])
+
+  const onCropAreaChange = useCallback((croppedArea: Area) => {
+    setCroppedAreaPct(croppedArea)
+  }, [])
+
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('Por favor, selecione uma imagem válida')
+      return
+    }
+    const maxSize = 5 * 1024 * 1024
+    if (file.size > maxSize) {
+      toast.error('A imagem deve ter no máximo 5MB')
+      return
+    }
+    setImageToCrop(URL.createObjectURL(file))
+    setSelectedFileName(file.name)
+    setCrop({ x: 0, y: 0 })
+    setZoom(1)
+    setCroppedAreaPct(null)
+    setShowCropModal(true)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleCropCancel = useCallback(() => {
+    if (imageToCrop) URL.revokeObjectURL(imageToCrop)
+    setShowCropModal(false)
+    setImageToCrop(null)
+    setSelectedFileName('')
+    setCroppedAreaPct(null)
+  }, [imageToCrop])
+
+  const uploadCroppedImage = async (blob: Blob, fileName: string) => {
+    setIsUploadingImage(true)
+    const loadingToast = toast.loading('Fazendo upload da foto...')
+
+    try {
+      const file = new File([blob], fileName.replace(/\.[^.]+$/, '.jpg') || 'foto.jpg', { type: 'image/jpeg' })
+      const uploadResult = await filesService.upload(
+        file as any,
+        'PROFILE_IMAGE',
+        'Foto de perfil do usuário'
+      )
+
+      if (!uploadResult.success || !uploadResult.data) {
+        throw new Error(uploadResult.error || 'Erro ao fazer upload da imagem')
+      }
+
+      // Atualizar perfil com a URL da imagem
+      const updateResult = await usersService.updateMyProfile({
+        profilePicture: uploadResult.data.url
+      })
+
+      toast.dismiss(loadingToast)
+
+      if (updateResult.success && updateResult.data) {
+        // Atualizar estado local
+        setProfileData(prev => ({
+          ...prev,
+          profilePicture: uploadResult.data!.url
+        }))
+        setOriginalData(prev => ({
+          ...prev,
+          profilePicture: uploadResult.data!.url
+        }))
+
+        toast.success('📸 Foto do perfil atualizada!', {
+          description: 'Sua nova foto está sendo processada e aparecerá em breve.'
+        })
+      } else {
+        throw new Error(updateResult.error || 'Erro ao atualizar perfil')
+      }
+    } catch (error: any) {
+      toast.dismiss(loadingToast)
+      toast.error(error.message || 'Erro ao fazer upload da foto')
+      console.error('Erro ao fazer upload:', error)
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
+
+  const handleCropConfirm = async () => {
+    if (!imageToCrop || !croppedAreaPct) {
+      toast.error('Ajuste a área de corte antes de continuar')
+      return
+    }
+    const fileName = selectedFileName
+    try {
+      const blob = await createCroppedImage(imageToCrop, croppedAreaPct)
+      handleCropCancel()
+      await uploadCroppedImage(blob, fileName)
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao processar imagem')
+    }
+  }
+
+  const handleRemoveImage = async () => {
+    if (!profileData.profilePicture) return
+
+    setIsUploadingImage(true)
+    const loadingToast = toast.loading('Removendo foto...')
+
+    try {
+      // Atualizar perfil removendo a URL da imagem
+      const updateResult = await usersService.updateMyProfile({
+        profilePicture: undefined
+      })
+
+      toast.dismiss(loadingToast)
+
+      if (updateResult.success && updateResult.data) {
+        // Atualizar estado local
+        setProfileData(prev => ({
+          ...prev,
+          profilePicture: ''
+        }))
+        setOriginalData(prev => ({
+          ...prev,
+          profilePicture: ''
+        }))
+
+        toast.success('Foto removida com sucesso!')
+      } else {
+        throw new Error(updateResult.error || 'Erro ao remover foto')
+      }
+    } catch (error: any) {
+      toast.dismiss(loadingToast)
+      toast.error(error.message || 'Erro ao remover foto')
+      console.error('Erro ao remover foto:', error)
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
 
   const handleSaveProfile = async () => {
     // Validação
@@ -406,6 +600,55 @@ export function ProSettings() {
 
   return (
     <div className="h-screen flex flex-col">
+      {/* Modal de corte da imagem */}
+      <Dialog open={showCropModal} onOpenChange={(open) => !open && handleCropCancel()}>
+        <DialogContent className="sm:max-w-[500px] p-0 gap-0 overflow-hidden">
+          <DialogHeader className="p-4 pb-0">
+            <DialogTitle>Cortar foto</DialogTitle>
+            <DialogDescription>
+              Ajuste a área de corte. A foto de perfil será quadrada. Arraste para mover e use o zoom se precisar.
+            </DialogDescription>
+          </DialogHeader>
+          {imageToCrop && (
+            <div className="relative h-[400px] w-full bg-black">
+              <Cropper
+                image={imageToCrop}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                cropShape="rect"
+                showGrid
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropAreaChange={onCropAreaChange}
+                onCropComplete={onCropAreaChange}
+              />
+            </div>
+          )}
+          <div className="p-4 space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm">Zoom</Label>
+              <Slider
+                min={1}
+                max={3}
+                step={0.1}
+                value={[zoom]}
+                onValueChange={([v]) => setZoom(v ?? 1)}
+                className="w-full"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleCropCancel}>
+                Cancelar
+              </Button>
+              <Button type="button" onClick={handleCropConfirm} disabled={!croppedAreaPct}>
+                Cortar e salvar
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b bg-card flex-shrink-0">
         <div>
@@ -493,16 +736,24 @@ export function ProSettings() {
                       <Avatar className="h-24 w-24">
                         <AvatarImage src={profileData.profilePicture} alt={profileData.name} />
                         <AvatarFallback className="text-xl bg-aumigo-blue/20 text-aumigo-teal">
-                          {profileData.name.split(' ').map(n => n[0]).join('')}
+                          {profileData.name?.[0]?.toUpperCase() ?? 'U'}
                         </AvatarFallback>
                       </Avatar>
                       <Button
                         size="sm"
                         className="absolute -bottom-2 -right-2 h-8 w-8 p-0 rounded-full bg-aumigo-orange hover:bg-aumigo-orange/90"
-                        onClick={() => toast.info('Upload de foto em desenvolvimento')}
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploadingImage}
                       >
                         <Camera className="h-4 w-4" />
                       </Button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageSelect}
+                      />
                     </div>
                     <div>
                       <h3 className="font-medium mb-1">Foto do Perfil</h3>
@@ -513,34 +764,24 @@ export function ProSettings() {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => {
-                            toast.loading('Fazendo upload da foto...')
-                            setTimeout(() => {
-                              toast.dismiss()
-                              toast.success('📸 Foto do perfil atualizada!', {
-                                description: 'Sua nova foto está sendo processada e aparecerá em breve.'
-                              })
-                            }, 1500)
-                          }}
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploadingImage}
                         >
                           <Upload className="h-4 w-4 mr-2" />
-                          Alterar foto
+                          {isUploadingImage ? 'Enviando...' : 'Alterar foto'}
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="text-destructive"
-                          onClick={() => {
-                            toast.loading('Removendo foto...')
-                            setTimeout(() => {
-                              toast.dismiss()
-                              toast.success('Foto removida com sucesso!')
-                            }, 800)
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Remover
-                        </Button>
+                        {profileData.profilePicture && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-destructive"
+                            onClick={handleRemoveImage}
+                            disabled={isUploadingImage}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Remover
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>

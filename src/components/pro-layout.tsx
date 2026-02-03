@@ -24,7 +24,7 @@ interface User {
   name: string
   email: string
   phone: string
-  avatar: string
+  profilePicture: string
   specialty: string
   kycStatus: 'PENDING' | 'APPROVED' | 'REJECTED'
   isFirstLogin: boolean
@@ -71,9 +71,9 @@ export function ProLayout({ children, currentPage, onNavigate, user, onLogout }:
               </div>
             </div>
             <div className="flex items-center gap-3 mt-4 p-3 bg-muted rounded-lg">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"} />
-                <AvatarFallback>{user?.name ? user.name.split(' ').map(n => n[0]).join('') : 'U'}</AvatarFallback>
+              <Avatar className="h-8 w-8 border">  
+                  <AvatarImage src={user?.profilePicture} />
+                  <AvatarFallback>{user?.name?.[0]?.toUpperCase() ?? 'U'}</AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-xs text-aumigo-teal truncate">{user?.name || 'Usuário'}</p>
@@ -87,6 +87,9 @@ export function ProLayout({ children, currentPage, onNavigate, user, onLogout }:
                   )}
                   {user?.kycStatus === 'REJECTED' && (
                     <Badge className="text-xs bg-status-error text-white border-0 h-4">Rejeitado</Badge>
+                  )}
+                  {user?.kycStatus === 'FREE' && (
+                    <Badge className="text-xs bg-status-success text-white border-0 h-4">FREE</Badge>
                   )}
                 </div>
               </div>

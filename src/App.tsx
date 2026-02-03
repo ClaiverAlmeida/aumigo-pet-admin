@@ -16,6 +16,7 @@ import { AdminAuth } from './components/admin-auth'
 import { AdminLayout } from './components/admin-layout'
 import { AdminDashboard } from './components/admin-dashboard'
 import { RouteSwitcher } from './components/route-switcher'
+import { OnboardingCompany } from './components/onboarding-company'
 import { Toaster } from './components/ui/sonner'
 import { useAuth } from './contexts/AuthContext'
 import { useRouter } from './hooks/useRouter'
@@ -26,7 +27,7 @@ interface User {
   name: string
   email: string
   phone: string
-  avatar: string
+  profilePicture?: string
   specialty: string
   kycStatus: 'PENDING' | 'APPROVED' | 'REJECTED'
   isFirstLogin: boolean
@@ -237,6 +238,24 @@ export default function App() {
       return (
         <>
           <Auth onLogin={handleLogin} />
+          <Toaster />
+        </>
+      )
+    }
+
+    // Verificar se usuário é USER sem empresa - precisa criar empresa primeiro
+    const needsOnboarding = user.role === 'USER' && !user.companyId
+
+    if (needsOnboarding) {
+      return (
+        <>
+          <OnboardingCompany 
+            user={user}
+            onComplete={() => {
+              // Recarregar página para atualizar dados do usuário
+              window.location.reload()
+            }}
+          />
           <Toaster />
         </>
       )

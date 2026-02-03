@@ -18,7 +18,7 @@ interface User {
   name: string
   email: string
   phone: string
-  avatar: string
+  profilePicture: string
   specialty: string
   kycStatus: 'PENDING' | 'APPROVED' | 'REJECTED'
   isFirstLogin: boolean
@@ -58,8 +58,8 @@ export function Header({ currentPageTitle, user, onLogout }: HeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"} />
-                  <AvatarFallback>{user?.name ? user.name.split(' ').map(n => n[0]).join('') : 'U'}</AvatarFallback>
+                  <AvatarImage src={user?.profilePicture} />
+                  <AvatarFallback>{user?.name?.[0]?.toUpperCase() ?? 'U'}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>

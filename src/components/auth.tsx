@@ -133,7 +133,7 @@ export function Auth({ onLogin }: AuthProps) {
             phone: userData.phone || '',
             avatar: userData.avatar || '',
             specialty: userData.specialty || 'OTHER',
-            kycStatus: userData.kycStatus || 'PENDING',
+            kycStatus: userData.kycStatus || 'FREE',
             isFirstLogin: userData.isFirstLogin || false
           })
         }
@@ -154,25 +154,30 @@ export function Auth({ onLogin }: AuthProps) {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('') // Limpar erro anterior
     
     if (step === 1) {
       // Validação da etapa 1
       if (!signupData.name || !signupData.email || !signupData.phone || 
           !signupData.password || !signupData.confirmPassword) {
+        setError('Preencha todos os campos obrigatórios')
         toast.error('Preencha todos os campos obrigatórios')
         return
       }
       
       if (signupData.password !== signupData.confirmPassword) {
+        setError('As senhas não coincidem')
         toast.error('As senhas não coincidem')
         return
       }
       
       if (signupData.password.length < 8) {
+        setError('A senha deve ter pelo menos 8 caracteres')
         toast.error('A senha deve ter pelo menos 8 caracteres')
         return
       }
       
+      setError('') // Limpar erro ao avançar para próxima etapa
       setStep(2)
       return
     }
@@ -180,35 +185,43 @@ export function Auth({ onLogin }: AuthProps) {
     if (step === 2) {
       // Validação da etapa 2
       if (!signupData.business) {
+        setError('Preencha todos os campos obrigatórios')
         toast.error('Preencha todos os campos obrigatórios')
         return
       }
       
       // Validação de documento (CNPJ ou CPF)
       if (!signupData.cnpj) {
-        toast.error(signupData.businessType === 'empresa' ? 'CNPJ é obrigatório' : 'CPF é obrigatório')
+        const errorMsg = signupData.businessType === 'empresa' ? 'CNPJ é obrigatório' : 'CPF é obrigatório'
+        setError(errorMsg)
+        toast.error(errorMsg)
         return
       }
 
       // Validação para empresa: tudo obrigatório (exceto site)
       if (signupData.businessType === 'empresa') {
         if (!signupData.zipCode) {
+          setError('CEP é obrigatório para empresas')
           toast.error('CEP é obrigatório para empresas')
           return
         }
         if (!signupData.address) {
+          setError('Endereço é obrigatório para empresas')
           toast.error('Endereço é obrigatório para empresas')
           return
         }
         if (!signupData.addressNumber) {
+          setError('Número do endereço é obrigatório para empresas')
           toast.error('Número do endereço é obrigatório para empresas')
           return
         }
         if (!signupData.city) {
+          setError('Cidade é obrigatória para empresas')
           toast.error('Cidade é obrigatória para empresas')
           return
         }
         if (!signupData.state) {
+          setError('Estado é obrigatório para empresas')
           toast.error('Estado é obrigatório para empresas')
           return
         }
@@ -217,10 +230,12 @@ export function Auth({ onLogin }: AuthProps) {
       // Validação para autônomo: cidade e UF obrigatórios
       if (signupData.businessType === 'autonomo') {
         if (!signupData.city) {
+          setError('Cidade é obrigatória')
           toast.error('Cidade é obrigatória')
           return
         }
         if (!signupData.state) {
+          setError('Estado é obrigatório')
           toast.error('Estado é obrigatório')
           return
         }
@@ -228,14 +243,17 @@ export function Auth({ onLogin }: AuthProps) {
 
       // Validação de especialidade e experiência (obrigatórios para todos)
       if (!signupData.specialty) {
+        setError('Especialidade é obrigatória')
         toast.error('Especialidade é obrigatória')
         return
       }
       if (!signupData.experience) {
+        setError('Experiência é obrigatória')
         toast.error('Experiência é obrigatória')
         return
       }
       
+      setError('') // Limpar erro ao avançar para próxima etapa
       setStep(3)
       return
     }
@@ -243,11 +261,13 @@ export function Auth({ onLogin }: AuthProps) {
     if (step === 3) {
       // Validação da etapa 3
       if (!signupData.acceptTerms) {
+        setError('Você deve aceitar os termos de serviço')
         toast.error('Você deve aceitar os termos de serviço')
         return
       }
       
       setIsLoading(true)
+      setError('') // Limpar erro antes de tentar criar conta
       toast.loading('Criando sua conta...', { id: 'signup-loading' })
 
       try {
@@ -270,7 +290,9 @@ export function Auth({ onLogin }: AuthProps) {
 
         if (!result.success) {
           setIsLoading(false)
-          toast.error(result.error || 'Erro ao criar conta')
+          const errorMsg = result.error || 'Erro ao criar conta'
+          setError(errorMsg)
+          toast.error(errorMsg)
           return
         }
 
@@ -285,17 +307,20 @@ export function Auth({ onLogin }: AuthProps) {
             phone: userData.phone || '',
             avatar: userData.avatar || '',
             specialty: userData.specialty || 'OTHER',
-            kycStatus: userData.kycStatus || 'PENDING',
+            kycStatus: userData.kycStatus || 'FREE',
             isFirstLogin: userData.isFirstLogin || true,
           })
         }
 
         setIsLoading(false)
+        setError('') // Limpar erro em caso de sucesso
         toast.success('Conta criada com sucesso! Complete seu perfil para começar. 🎉')
       } catch (error: any) {
         toast.dismiss('signup-loading')
         setIsLoading(false)
-        toast.error(error?.message || 'Erro ao criar conta')
+        const errorMsg = error?.message || 'Erro ao criar conta'
+        setError(errorMsg)
+        toast.error(errorMsg)
       }
     }
   }
@@ -354,6 +379,7 @@ export function Auth({ onLogin }: AuthProps) {
 
   const resetSignupStep = () => {
     setStep(1)
+    setError('') // Limpar erro ao resetar formulário
     setSignupData({
       name: '',
       email: '',
@@ -610,6 +636,26 @@ export function Auth({ onLogin }: AuthProps) {
                   {/* Signup Tab */}
                   <TabsContent value="signup" className="space-y-4">
                     <form onSubmit={handleSignup} className="space-y-4">
+                      {/* Mensagem de erro animada */}
+                      {error && (
+                        <motion.div 
+                          className="px-4 py-3 rounded-xl mb-4"
+                          style={{
+                            backgroundColor: '#fef2f2',
+                            border: '1px solid #fecaca',
+                            color: '#b91c1c'
+                          }}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <p className="text-sm flex items-center gap-2" style={{ color: '#b91c1c' }}>
+                            <AlertCircle className="h-4 w-4" style={{ color: '#dc2626' }} />
+                            {error}
+                          </p>
+                        </motion.div>
+                      )}
+                      
                       {step === 1 && (
                         <>
                           <div className="text-center mb-4">
@@ -646,7 +692,10 @@ export function Auth({ onLogin }: AuthProps) {
                                   backgroundColor: 'white'
                                 }}
                                 value={signupData.name}
-                                onChange={(e) => setSignupData({ ...signupData, name: e.target.value })}
+                                onChange={(e) => {
+                                  setSignupData({ ...signupData, name: e.target.value })
+                                  setError('') // Limpar erro ao começar a digitar
+                                }}
                                 required
                               />
                             </div>
@@ -669,7 +718,10 @@ export function Auth({ onLogin }: AuthProps) {
                                   backgroundColor: 'white'
                                 }}
                                 value={signupData.email}
-                                onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
+                                onChange={(e) => {
+                                  setSignupData({ ...signupData, email: e.target.value })
+                                  setError('') // Limpar erro ao começar a digitar
+                                }}
                                 required
                               />
                             </div>
@@ -692,7 +744,10 @@ export function Auth({ onLogin }: AuthProps) {
                                   backgroundColor: 'white'
                                 }}
                                 value={signupData.phone}
-                                onChange={(e) => setSignupData({ ...signupData, phone: e.target.value })}
+                                onChange={(e) => {
+                                  setSignupData({ ...signupData, phone: e.target.value })
+                                  setError('') // Limpar erro ao começar a digitar
+                                }}
                                 required
                               />
                             </div>
@@ -1084,7 +1139,10 @@ export function Auth({ onLogin }: AuthProps) {
                           <Button 
                             type="button" 
                             variant="outline"
-                            onClick={() => setStep(step - 1)}
+                            onClick={() => {
+                              setError('') // Limpar erro ao voltar
+                              setStep(step - 1)
+                            }}
                             className="flex-1 border-aumigo-gray/30"
                             disabled={isLoading}
                           >
