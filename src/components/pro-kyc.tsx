@@ -173,7 +173,7 @@ export function ProKYC() {
 
   if (loading) {
     return (
-      <div className="p-10 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 sm:p-6 lg:p-10 flex items-center justify-center min-h-[400px]">
         <div className="text-center space-y-4">
           <Loader2 className="w-8 h-8 animate-spin mx-auto text-aumigo-orange" />
           <p className="text-muted-foreground">Carregando dados...</p>
@@ -183,27 +183,27 @@ export function ProKYC() {
   }
 
   return (
-    <div className="p-10 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="p-4 sm:p-6 lg:p-10 space-y-6 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h2>KYC & Perfil Profissional</h2>
-          <p className="text-muted-foreground">Gerencie seus dados pessoais e da empresa</p>
+          <h2 className="text-xl sm:text-2xl font-semibold">KYC & Perfil Profissional</h2>
+          <p className="text-sm text-muted-foreground mt-1">Gerencie seus dados pessoais e da empresa</p>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         {/* Card: Dados do Usuário (Somente Leitura) */}
         <Card>
-          <CardHeader>
+          <CardHeader className="p-4 sm:p-6">
             <CardTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />
               Dados do Usuário
             </CardTitle>
             <CardDescription>Informações pessoais do seu perfil (somente leitura)</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16">
+          <CardContent className="space-y-4 p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <Avatar className="h-16 w-16 shrink-0">
                 <AvatarImage src={userData.profilePicture} />
                 <AvatarFallback>{userData.name?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
               </Avatar>
@@ -216,7 +216,7 @@ export function ProKYC() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
               <div>
                 <Label>CEP</Label>
                 <p className="text-sm font-mono mt-1">{userData.zipCode || '-'}</p>
@@ -241,15 +241,16 @@ export function ProKYC() {
 
         {/* Card: Dados da Empresa */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-2">
-                <Building className="w-5 h-5" />
+                <Building className="w-5 h-5 shrink-0" />
                 Dados da Empresa
               </div>
               <Button 
                 variant="outline" 
                 size="sm"
+                className="w-full sm:w-auto shrink-0"
                 onClick={() => {
                   if (isEditingCompany) {
                     setIsEditingCompany(false)
@@ -264,7 +265,7 @@ export function ProKYC() {
             </CardTitle>
             <CardDescription>Informações da sua empresa</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-4 sm:p-6">
             <div>
               <Label>Nome da Empresa</Label>
               {isEditingCompany ? (
@@ -305,7 +306,7 @@ export function ProKYC() {
                     placeholder="Número"
                     onChange={(e) => handleCompanyChange('addressNumber', e.target.value)}
                   />
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <Input 
                       value={company.city || ''} 
                       placeholder="Cidade"
@@ -338,7 +339,7 @@ export function ProKYC() {
               )}
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
               <div>
                 <Label>Telefone de Contato</Label>
                 {isEditingCompany ? (
@@ -379,7 +380,7 @@ export function ProKYC() {
             </div>
 
             {isEditingCompany && (
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
                 <Button 
                   variant="outline" 
                   onClick={() => {
@@ -387,12 +388,14 @@ export function ProKYC() {
                     loadData()
                   }}
                   disabled={saving}
+                  className="w-full sm:w-auto"
                 >
                   Cancelar
                 </Button>
                 <Button 
                   onClick={handleSaveCompany}
                   disabled={saving}
+                  className="w-full sm:w-auto"
                 >
                   {saving ? (
                     <>

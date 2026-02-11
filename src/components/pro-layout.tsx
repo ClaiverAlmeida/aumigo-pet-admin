@@ -127,7 +127,7 @@ export function ProLayout({ children, currentPage, onNavigate, user, onLogout }:
         <div className="flex-1 flex flex-col">
           <Header currentPageTitle={currentPageTitle} user={user} onLogout={onLogout} />
           
-          <main className="flex-1">
+          <main className="flex-1 min-w-0 overflow-x-hidden">
             {children}
           </main>
           

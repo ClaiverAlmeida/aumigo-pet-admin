@@ -108,16 +108,16 @@ export function ProFinance() {
   }
 
   return (
-    <div className="p-10 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2>Financeiro</h2>
-          <p className="text-muted-foreground">Acompanhe seus ganhos e repasses</p>
+    <div className="w-full min-w-0 max-w-full p-4 sm:p-6 lg:p-10 space-y-6 max-w-7xl mx-auto overflow-x-hidden">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div className="min-w-0">
+          <h2 className="text-xl sm:text-2xl font-semibold truncate">Financeiro</h2>
+          <p className="text-sm text-muted-foreground mt-1">Acompanhe seus ganhos e repasses</p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto min-w-0">
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full min-w-0 sm:w-[180px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -127,22 +127,22 @@ export function ProFinance() {
             </SelectContent>
           </Select>
           
-          <Button variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Exportar
+          <Button variant="outline" className="w-full sm:w-auto shrink-0">
+            <Download className="w-4 h-4 mr-2 shrink-0" />
+            <span className="truncate">Exportar</span>
           </Button>
         </div>
       </div>
 
       {/* KPIs Financeiros */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
             <CardTitle className="text-sm font-medium">Saldo Disponível</CardTitle>
-            <Banknote className="h-4 w-4 text-green-600" />
+            <Banknote className="h-4 w-4 text-green-600 shrink-0" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(financialSummary.currentBalance)}</div>
+          <CardContent className="p-4 sm:p-6">
+            <div className="text-xl sm:text-2xl font-bold break-words">{formatCurrency(financialSummary.currentBalance)}</div>
             <p className="text-xs text-muted-foreground">
               Disponível para saque
             </p>
@@ -150,12 +150,12 @@ export function ProFinance() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
             <CardTitle className="text-sm font-medium">Receita do Mês</CardTitle>
-            <DollarSign className="h-4 w-4 text-blue-600" />
+            <DollarSign className="h-4 w-4 text-blue-600 shrink-0" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(financialSummary.monthEarnings)}</div>
+          <CardContent className="p-4 sm:p-6">
+            <div className="text-xl sm:text-2xl font-bold break-words">{formatCurrency(financialSummary.monthEarnings)}</div>
             <div className="flex items-center text-xs text-muted-foreground">
               <TrendingUp className="h-3 w-3 mr-1 text-green-600" />
               <span className="text-green-600">+12%</span>
@@ -165,12 +165,12 @@ export function ProFinance() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
             <CardTitle className="text-sm font-medium">Valor Líquido</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
+            <TrendingUp className="h-4 w-4 text-green-600 shrink-0" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(financialSummary.monthNet)}</div>
+          <CardContent className="p-4 sm:p-6">
+            <div className="text-xl sm:text-2xl font-bold break-words">{formatCurrency(financialSummary.monthNet)}</div>
             <p className="text-xs text-muted-foreground">
               Após taxas ({formatCurrency(financialSummary.monthFees)})
             </p>
@@ -178,12 +178,12 @@ export function ProFinance() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
             <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
-            <CreditCard className="h-4 w-4 text-purple-600" />
+            <CreditCard className="h-4 w-4 text-purple-600 shrink-0" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(financialSummary.averageTicket)}</div>
+          <CardContent className="p-4 sm:p-6">
+            <div className="text-xl sm:text-2xl font-bold break-words">{formatCurrency(financialSummary.averageTicket)}</div>
             <p className="text-xs text-muted-foreground">
               {financialSummary.transactionCount} transações
             </p>
@@ -191,23 +191,24 @@ export function ProFinance() {
         </Card>
       </div>
 
-      <Tabs defaultValue="payouts" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="payouts">Repasses</TabsTrigger>
-          <TabsTrigger value="transactions">Transações</TabsTrigger>
-          <TabsTrigger value="analytics">Análise</TabsTrigger>
+      <Tabs defaultValue="payouts" className="space-y-4 min-w-0">
+        <TabsList className="grid w-full grid-cols-3 min-w-0">
+          <TabsTrigger value="payouts" className="text-xs sm:text-sm min-w-0 truncate px-2">Repasses</TabsTrigger>
+          <TabsTrigger value="transactions" className="text-xs sm:text-sm min-w-0 truncate px-2">Transações</TabsTrigger>
+          <TabsTrigger value="analytics" className="text-xs sm:text-sm min-w-0 truncate px-2">Análise</TabsTrigger>
         </TabsList>
 
         <TabsContent value="payouts" className="space-y-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="p-4 sm:p-6">
               <CardTitle>Cronograma de Repasses</CardTitle>
               <CardDescription>
                 Acompanhe quando seus valores serão depositados
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Table>
+            <CardContent className="p-4 sm:p-6 overflow-hidden">
+              <div className="overflow-x-auto">
+              <Table className="min-w-[600px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Referência</TableHead>
@@ -259,20 +260,22 @@ export function ProFinance() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="transactions" className="space-y-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="p-4 sm:p-6">
               <CardTitle>Histórico de Transações</CardTitle>
               <CardDescription>
                 Todas as transações dos seus agendamentos
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Table>
+            <CardContent className="p-4 sm:p-6 overflow-hidden">
+              <div className="overflow-x-auto">
+              <Table className="min-w-[600px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Cliente</TableHead>
@@ -331,20 +334,21 @@ export function ProFinance() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="analytics" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
+        <TabsContent value="analytics" className="space-y-4 min-w-0">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 min-w-0">
+            <Card className="min-w-0">
+              <CardHeader className="p-4 sm:p-6">
                 <CardTitle>Performance Mensal</CardTitle>
                 <CardDescription>
                   {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 p-4 sm:p-6">
                 {financialSummary.monthEarnings > 0 ? (
                   <>
                     <div>
@@ -370,7 +374,7 @@ export function ProFinance() {
                       <p className="text-xs text-green-600 mt-1">Taxa dentro do esperado</p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 pt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
                       <div className="text-center">
                         <p className="text-2xl font-bold">{financialSummary.transactionCount}</p>
                         <p className="text-xs text-muted-foreground">Transações</p>
@@ -389,12 +393,12 @@ export function ProFinance() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
+            <Card className="min-w-0">
+              <CardHeader className="p-4 sm:p-6">
                 <CardTitle>Breakdown de Receita</CardTitle>
                 <CardDescription>Por tipo de serviço</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-3 p-4 sm:p-6">
                 {financialSummary.monthEarnings > 0 ? (
                   <>
                     <div className="pt-4 space-y-2 border-t">

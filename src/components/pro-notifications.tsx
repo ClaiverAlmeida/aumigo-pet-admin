@@ -35,16 +35,16 @@ export function ProNotifications() {
   }
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="w-full min-w-0 min-h-0 flex flex-col flex-1">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between p-4 sm:p-6 border-b bg-card flex-shrink-0 gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-6 lg:p-10 border-b bg-card flex-shrink-0 gap-4">
         <div className="min-w-0">
-          <h1 className="text-foreground mb-2 text-lg sm:text-xl">Central de Notificações</h1>
-          <p className="text-muted-foreground text-sm sm:text-base">
+          <h1 className="text-foreground mb-2 text-xl sm:text-2xl font-semibold">Central de Notificações</h1>
+          <p className="text-muted-foreground text-sm mt-1">
             Gerencie todas as suas notificações e alertas importantes
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 flex-shrink-0">
           <Badge className="bg-aumigo-orange text-white text-xs sm:text-sm">
             {unreadCount} não lidas
           </Badge>
@@ -62,23 +62,23 @@ export function ProNotifications() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 p-3 sm:p-6 overflow-hidden">
-        <Tabs defaultValue="notifications" className="h-full flex flex-col">
-          <TabsList className="grid w-full grid-cols-3 mb-4 sm:mb-6">
+      <div className="flex-1 p-4 sm:p-6 lg:p-10 overflow-auto min-h-0">
+        <Tabs defaultValue="notifications" className="h-full flex flex-col min-h-0">
+          <TabsList className="grid w-full grid-cols-3 mb-4 sm:mb-6 flex-shrink-0">
             <TabsTrigger value="notifications" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
               <Bell className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden xs:inline">Notificações</span>
-              <span className="xs:hidden">Notif.</span>
+              <span className="hidden sm:inline">Notificações</span>
+              <span className="sm:hidden">Notif.</span>
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
               <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden xs:inline">Configurações</span>
-              <span className="xs:hidden">Config.</span>
+              <span className="hidden sm:inline">Configurações</span>
+              <span className="sm:hidden">Config.</span>
             </TabsTrigger>
             <TabsTrigger value="history" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
               <Archive className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden xs:inline">Histórico</span>
-              <span className="xs:hidden">Hist.</span>
+              <span className="hidden sm:inline">Histórico</span>
+              <span className="sm:hidden">Hist.</span>
             </TabsTrigger>
           </TabsList>
 
@@ -97,8 +97,8 @@ export function ProNotifications() {
             </TabsContent>
 
             {/* Settings Tab */}
-            <TabsContent value="settings" className="space-y-4 sm:space-y-6">
-              <div className="max-w-full lg:max-w-4xl mx-auto">
+            <TabsContent value="settings" className="space-y-4 sm:space-y-6 overflow-auto">
+              <div className="max-w-7xl mx-auto w-full">
                 <Card>
                   <CardHeader className="p-4 sm:p-6">
                     <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -157,7 +157,7 @@ export function ProNotifications() {
                         <CardTitle className="text-sm sm:text-base">Ações Disponíveis</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                           <Button 
                             variant="outline" 
                             className="justify-start text-xs sm:text-sm"
@@ -203,8 +203,8 @@ export function ProNotifications() {
             </TabsContent>
 
             {/* History Tab */}
-            <TabsContent value="history" className="space-y-4 sm:space-y-6">
-              <div className="max-w-full mx-auto">
+            <TabsContent value="history" className="space-y-4 sm:space-y-6 overflow-auto">
+              <div className="max-w-7xl mx-auto w-full">
                 <Card>
                   <CardHeader className="p-4 sm:p-6">
                     <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -217,7 +217,7 @@ export function ProNotifications() {
                   </CardHeader>
                   <CardContent className="space-y-4 p-4 sm:p-6">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                      <div className="flex flex-col xs:flex-row gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <Button variant="outline" size="sm" className="text-xs sm:text-sm">
                           <Filter className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                           <span className="hidden sm:inline">Filtrar por Tipo</span>
@@ -232,7 +232,7 @@ export function ProNotifications() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        className="text-xs sm:text-sm w-full xs:w-auto"
+                        className="text-xs sm:text-sm w-full sm:w-auto"
                         onClick={handleExportNotifications}
                       >
                         <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />

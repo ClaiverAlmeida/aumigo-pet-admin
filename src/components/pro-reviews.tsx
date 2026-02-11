@@ -1,24 +1,22 @@
-import { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Textarea } from './ui/textarea'
-import { Separator } from './ui/separator'
 import { Progress } from './ui/progress'
 import { 
   Star, 
   MessageSquare, 
   Filter, 
-  TrendingUp, 
-  Calendar,
-  ChevronDown,
+  TrendingUp,
   Reply,
   Send,
   MoreVertical,
   Heart,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -26,23 +24,47 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu'
+import { reviewsService, type Review as BackendReview, type ReviewStatistics } from '../services'
+import { toast } from 'sonner'
 
+interface ReviewData {
+  id: string | number
+  client: {
+    name: string
+    avatar?: string
+    pets: string[]
+  }
+  service: string
+  rating: number
+  date: Date
+  comment?: string
+  response?: {
+    text: string
+    date: Date
+  } | null
+  helpful: number
+  photos: number
+}
 
-// Mock data para avaliações - Estado inicial sem avaliações
-const reviewsData: any[] = []
-
-const statsData = {
-  averageRating: 0,
-  totalReviews: 0,
-  ratingDistribution: [
-    { stars: 5, count: 0, percentage: 0 },
-    { stars: 4, count: 0, percentage: 0 },
-    { stars: 3, count: 0, percentage: 0 },
-    { stars: 2, count: 0, percentage: 0 },
-    { stars: 1, count: 0, percentage: 0 }
-  ],
-  monthlyGrowth: 0,
-  responseRate: 0
+function convertBackendReview(backendReview: BackendReview): ReviewData {
+  return {
+    id: backendReview.id,
+    client: {
+      name: backendReview.author?.name || backendReview.authorName || 'Cliente',
+      avatar: backendReview.author?.profilePicture,
+      pets: Array.isArray(backendReview.petNames) ? backendReview.petNames : []
+    },
+    service: backendReview.provider?.name || backendReview.providerName || 'Serviço',
+    rating: backendReview.rating,
+    date: new Date(backendReview.createdAt),
+    comment: backendReview.comment,
+    response: backendReview.responseText && backendReview.responseDate ? {
+      text: backendReview.responseText,
+      date: new Date(backendReview.responseDate)
+    } : null,
+    helpful: backendReview.helpful || 0,
+    photos: backendReview.photos || 0
+  }
 }
 
 function StarRating({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" | "lg" }) {
@@ -62,7 +84,12 @@ function StarRating({ rating, size = "sm" }: { rating: number; size?: "sm" | "md
   )
 }
 
-function ReviewCard({ review, onReply }: { review: any; onReply: (id: number) => void }) {
+function ReviewCard({ review, onReply, onHelpful, onReport }: { 
+  review: ReviewData
+  onReply: (id: string | number) => void
+  onHelpful: (id: string | number) => void
+  onReport: (id: string | number) => void
+}) {
   return (
     <Card className="border border-gray-200">
       <CardContent className="p-6">
@@ -75,9 +102,11 @@ function ReviewCard({ review, onReply }: { review: any; onReply: (id: number) =>
             <div>
               <div className="flex items-center gap-2">
                 <h4 className="font-medium text-[#2E6F79]">{review.client.name}</h4>
-                <Badge variant="outline" className="text-xs text-[#6B7280]">
-                  {review.client.pets.join(', ')}
-                </Badge>
+                {review.client.pets.length > 0 && (
+                  <Badge variant="outline" className="text-xs text-[#6B7280]">
+                    {review.client.pets.join(', ')}
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-2 mt-1">
                 <StarRating rating={review.rating} />
@@ -101,11 +130,11 @@ function ReviewCard({ review, onReply }: { review: any; onReply: (id: number) =>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => alert('Funcionalidade em desenvolvimento')}>
                   <MessageSquare className="h-4 w-4 mr-2" />
                   Marcar como importante
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onReport(review.id)}>
                   <AlertCircle className="h-4 w-4 mr-2" />
                   Reportar problema
                 </DropdownMenuItem>
@@ -114,7 +143,9 @@ function ReviewCard({ review, onReply }: { review: any; onReply: (id: number) =>
           </div>
         </div>
         
-        <p className="text-[#6B7280] mb-4 leading-relaxed">{review.comment}</p>
+        {review.comment && (
+          <p className="text-[#6B7280] mb-4 leading-relaxed">{review.comment}</p>
+        )}
         
         {review.photos > 0 && (
           <div className="flex items-center gap-2 mb-4">
@@ -131,7 +162,12 @@ function ReviewCard({ review, onReply }: { review: any; onReply: (id: number) =>
         
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" className="text-[#6B7280] hover:text-[#2E6F79]">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-[#6B7280] hover:text-[#2E6F79]"
+              onClick={() => onHelpful(review.id)}
+            >
               <Heart className="h-4 w-4 mr-1" />
               {review.helpful} úteis
             </Button>
@@ -155,11 +191,10 @@ function ReviewCard({ review, onReply }: { review: any; onReply: (id: number) =>
             <div className="bg-[#f8f9fa] p-4 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
                 <Avatar className="h-6 w-6">
-                  <AvatarImage src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face" />
-                  <AvatarFallback>MS</AvatarFallback>
+                  <AvatarFallback>P</AvatarFallback>
                 </Avatar>
-                <span className="text-sm font-medium text-[#2E6F79]">Claiver Almeida</span>
-                <Badge variant="secondary" className="text-xs bg-[#FF9B57] text-white">Profissional</Badge>
+                <span className="text-sm font-medium text-[#2E6F79]">Profissional</span>
+                <Badge variant="secondary" className="text-xs bg-[#FF9B57] text-white">Resposta</Badge>
                 <span className="text-xs text-[#6B7280] ml-auto">
                   {review.response.date.toLocaleDateString('pt-BR')}
                 </span>
@@ -177,31 +212,136 @@ export function ProReviews() {
   const [selectedRating, setSelectedRating] = useState<string>("all")
   const [selectedService, setSelectedService] = useState<string>("all")
   const [selectedPeriod, setSelectedPeriod] = useState<string>("all")
-  const [replyingTo, setReplyingTo] = useState<number | null>(null)
+  const [replyingTo, setReplyingTo] = useState<string | number | null>(null)
   const [replyText, setReplyText] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [loadingStats, setLoadingStats] = useState(false)
+  const [sendingReply, setSendingReply] = useState(false)
+  
+  const [reviewsData, setReviewsData] = useState<ReviewData[]>([])
+  const [statsData, setStatsData] = useState<ReviewStatistics>({
+    averageRating: 0,
+    totalReviews: 0,
+    ratingDistribution: [
+      { stars: 5, count: 0, percentage: 0 },
+      { stars: 4, count: 0, percentage: 0 },
+      { stars: 3, count: 0, percentage: 0 },
+      { stars: 2, count: 0, percentage: 0 },
+      { stars: 1, count: 0, percentage: 0 }
+    ],
+    monthlyGrowth: 0,
+    responseRate: 0
+  })
 
-  const handleReply = (reviewId: number) => {
+  const loadStatistics = async () => {
+    setLoadingStats(true)
+    try {
+      const result = await reviewsService.obterEstatisticas()
+      
+      if (result.success && result.data) {
+        setStatsData(result.data)
+      } else {
+        toast.error(result.error || 'Erro ao carregar estatísticas')
+      }
+    } catch (error: any) {
+      toast.error('Erro ao conectar com o servidor')
+    } finally {
+      setLoadingStats(false)
+    }
+  }
+
+  const loadReviews = async () => {
+    setLoading(true)
+    try {
+      const filters: any = { limit: 100 }
+      if (selectedRating !== "all") filters.rating = parseInt(selectedRating)
+      if (selectedService !== "all") filters.providerId = selectedService
+
+      const result = await reviewsService.getAll(filters)
+      
+      if (result.success && result.data) {
+        const backendReviews = result.data.data || []
+        const convertedReviews = backendReviews.map(convertBackendReview)
+        setReviewsData(convertedReviews)
+      } else {
+        toast.error(result.error || 'Erro ao carregar avaliações')
+        setReviewsData([])
+      }
+    } catch (error: any) {
+      toast.error('Erro ao conectar com o servidor')
+      setReviewsData([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadStatistics()
+    loadReviews()
+  }, [])
+
+  useEffect(() => {
+    loadReviews()
+  }, [selectedRating, selectedService, selectedPeriod])
+
+  const handleReply = (reviewId: string | number) => {
     setReplyingTo(reviewId)
     setReplyText("")
   }
 
-  const handleSendReply = () => {
-    // Aqui enviaria a resposta para a API
-    console.log(`Resposta para avaliação ${replyingTo}: ${replyText}`)
-    setReplyingTo(null)
-    setReplyText("")
+  const handleSendReply = async () => {
+    if (!replyingTo || !replyText.trim()) return
+
+    setSendingReply(true)
+    try {
+      const result = await reviewsService.responder(String(replyingTo), { responseText: replyText })
+      if (result.success) {
+        toast.success(result.message || 'Resposta enviada com sucesso')
+        setReplyingTo(null)
+        setReplyText("")
+        await Promise.all([loadReviews(), loadStatistics()])
+      } else {
+        toast.error(result.error || 'Erro ao enviar resposta')
+      }
+    } catch (error: any) {
+      toast.error('Erro ao enviar resposta')
+    } finally {
+      setSendingReply(false)
+    }
+  }
+
+  const handleHelpful = async (reviewId: string | number) => {
+    try {
+      await reviewsService.marcarComoUtil(String(reviewId))
+      setReviewsData(prev => prev.map(r => 
+        r.id === reviewId ? { ...r, helpful: r.helpful + 1 } : r
+      ))
+      toast.success('Marcado como útil')
+    } catch (error: any) {
+      toast.error('Erro ao marcar como útil')
+    }
+  }
+
+  const handleReport = async (reviewId: string | number) => {
+    const motivo = prompt('Descreva o problema:')
+    if (!motivo) return
+
+    try {
+      await reviewsService.reportarProblema(String(reviewId), motivo)
+      toast.success('Problema reportado com sucesso')
+    } catch (error: any) {
+      toast.error('Erro ao reportar problema')
+    }
   }
 
   const filteredReviews = reviewsData.filter(review => {
     if (selectedRating !== "all" && review.rating !== parseInt(selectedRating)) return false
     if (selectedService !== "all" && review.service !== selectedService) return false
-    // Adicionar filtro de período se necessário
     return true
   })
 
   return (
     <div className="p-10 space-y-8">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[#2E6F79] mb-2">Avaliações dos Clientes</h1>
@@ -215,7 +355,6 @@ export function ProReviews() {
         </div>
       </div>
 
-      {/* Estatísticas */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -225,37 +364,31 @@ export function ProReviews() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="text-center">
-                <div className="text-4xl font-bold text-[#2E6F79] mb-2">
-                  {statsData.averageRating > 0 ? statsData.averageRating.toFixed(1) : '-'}
-                </div>
-                {statsData.averageRating > 0 ? (
+            {loadingStats ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-8 w-8 text-[#5EC4E7] mx-auto animate-spin" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="text-center">
+                  <div className="text-4xl font-bold text-[#2E6F79] mb-2">
+                    {statsData.averageRating > 0 ? statsData.averageRating.toFixed(1) : '0.0'}
+                  </div>
                   <StarRating rating={Math.round(statsData.averageRating)} size="md" />
-                ) : (
-                  <div className="flex items-center justify-center gap-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star key={star} className="w-5 h-5 text-gray-300" />
-                    ))}
-                  </div>
-                )}
-                <p className="text-[#6B7280] mt-1">
-                  {statsData.totalReviews === 0 
-                    ? 'Nenhuma avaliação ainda' 
-                    : `${statsData.totalReviews} avaliação${statsData.totalReviews > 1 ? 'ões' : ''}`}
-                </p>
+                  <p className="text-[#6B7280] mt-1">{statsData.totalReviews} avaliações</p>
+                </div>
+                
+                <div className="space-y-2">
+                  {statsData.ratingDistribution.map((item) => (
+                    <div key={item.stars} className="flex items-center gap-2">
+                      <span className="text-sm w-6">{item.stars}★</span>
+                      <Progress value={item.percentage} className="flex-1" />
+                      <span className="text-sm text-[#6B7280] w-12">{item.count}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              
-              <div className="space-y-2">
-                {statsData.ratingDistribution.map((item) => (
-                  <div key={item.stars} className="flex items-center gap-2">
-                    <span className="text-sm w-6">{item.stars}★</span>
-                    <Progress value={item.percentage} className="flex-1" />
-                    <span className="text-sm text-[#6B7280] w-12">{item.count}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
@@ -268,7 +401,7 @@ export function ProReviews() {
                 </div>
                 <div>
                   <div className="font-semibold text-[#2E6F79]">
-                    {statsData.monthlyGrowth > 0 ? `+${statsData.monthlyGrowth}%` : '0%'}
+                    {statsData.monthlyGrowth > 0 ? '+' : ''}{statsData.monthlyGrowth}%
                   </div>
                   <p className="text-sm text-[#6B7280]">Este mês</p>
                 </div>
@@ -292,7 +425,6 @@ export function ProReviews() {
         </div>
       </div>
 
-      {/* Filtros */}
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center gap-4 flex-wrap">
@@ -321,7 +453,7 @@ export function ProReviews() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os serviços</SelectItem>
-                <SelectItem value="Dr. Ana Veterinária">Dr. Ana Veterinária</SelectItem>
+                <SelectItem value="Banho e Tosa">Banho e Tosa</SelectItem>
                 <SelectItem value="Consulta Veterinária">Consulta Veterinária</SelectItem>
                 <SelectItem value="Adestramento">Adestramento</SelectItem>
                 <SelectItem value="Vacinação">Vacinação</SelectItem>
@@ -347,7 +479,6 @@ export function ProReviews() {
         </CardContent>
       </Card>
 
-      {/* Modal de resposta */}
       {replyingTo && (
         <Card className="border-[#FF9B57]">
           <CardHeader>
@@ -370,15 +501,25 @@ export function ProReviews() {
               <div className="flex items-center gap-2">
                 <Button 
                   onClick={handleSendReply}
-                  disabled={!replyText.trim()}
+                  disabled={!replyText.trim() || sendingReply}
                   className="bg-[#FF9B57] hover:bg-[#e8864a] text-white"
                 >
-                  <Send className="h-4 w-4 mr-2" />
-                  Enviar Resposta
+                  {sendingReply ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4 mr-2" />
+                      Enviar Resposta
+                    </>
+                  )}
                 </Button>
                 <Button 
                   variant="outline" 
                   onClick={() => setReplyingTo(null)}
+                  disabled={sendingReply}
                 >
                   Cancelar
                 </Button>
@@ -388,14 +529,24 @@ export function ProReviews() {
         </Card>
       )}
 
-      {/* Lista de avaliações */}
       <div className="space-y-4">
-        {filteredReviews.length === 0 ? (
+        {loading ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <Loader2 className="h-12 w-12 text-[#5EC4E7] mx-auto mb-4 animate-spin" />
+              <p className="text-[#6B7280]">Carregando avaliações...</p>
+            </CardContent>
+          </Card>
+        ) : filteredReviews.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">
               <Star className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <h3 className="font-medium text-[#2E6F79] mb-2">Nenhuma avaliação encontrada</h3>
-              <p className="text-[#6B7280]">Ajuste os filtros para ver mais avaliações</p>
+              <p className="text-[#6B7280]">
+                {reviewsData.length === 0 
+                  ? 'Você ainda não recebeu avaliações' 
+                  : 'Ajuste os filtros para ver mais avaliações'}
+              </p>
             </CardContent>
           </Card>
         ) : (
@@ -404,12 +555,13 @@ export function ProReviews() {
               key={review.id} 
               review={review} 
               onReply={handleReply}
+              onHelpful={handleHelpful}
+              onReport={handleReport}
             />
           ))
         )}
       </div>
 
-      {/* Pagination placeholder */}
       {filteredReviews.length > 0 && (
         <div className="flex justify-center pt-6">
           <Button variant="outline" className="border-[#FF9B57] text-[#FF9B57] hover:bg-[#FF9B57] hover:text-white">

@@ -217,16 +217,16 @@ export function ProBookings() {
   }).length
 
   return (
-    <div className="p-10 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="w-full min-w-0 p-4 sm:p-6 lg:p-10 space-y-6 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h2>Agendamentos</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl sm:text-2xl font-semibold">Agendamentos</h2>
+          <p className="text-sm text-muted-foreground mt-1">
             {filteredBookings.length} agendamento(s) encontrado(s)
           </p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Badge variant="outline">
             {pendingCount} Pendente(s)
           </Badge>
@@ -238,14 +238,15 @@ export function ProBookings() {
 
       {/* Filtros */}
       <Card>
-        <CardHeader>
+        <CardHeader className="p-4 sm:p-6">
           <CardTitle className="flex items-center gap-2">
-            <Filter className="w-4 h-4" />
+            <Filter className="w-4 h-4 shrink-0" />
             Filtros
           </CardTitle>
+          <CardDescription>Busque e filtre agendamentos por status e data</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <CardContent className="p-4 sm:p-6">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
             <div>
               <Label htmlFor="search">Buscar</Label>
               <div className="relative">
@@ -255,7 +256,7 @@ export function ProBookings() {
                   placeholder="Nome, pet ou serviço..."
                   value={filters.search}
                   onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                  className="pl-8"
+                  className="pl-8 w-full"
                 />
               </div>
             </div>
@@ -263,7 +264,7 @@ export function ProBookings() {
             <div>
               <Label htmlFor="status">Status</Label>
               <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value as 'all' | BookingStatus })}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Todos os status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -279,6 +280,7 @@ export function ProBookings() {
             <div>
               <Label htmlFor="date-from">Data de</Label>
               <Input
+                className="w-full"
                 id="date-from"
                 type="date"
                 value={filters.dateFrom}
@@ -289,6 +291,7 @@ export function ProBookings() {
             <div>
               <Label htmlFor="date-to">Data até</Label>
               <Input
+                className="w-full"
                 id="date-to"
                 type="date"
                 value={filters.dateTo}
@@ -301,8 +304,9 @@ export function ProBookings() {
 
       {/* Lista de Agendamentos */}
       <Card>
-        <CardContent>
-          <Table>
+        <CardContent className="p-4 sm:p-6 overflow-hidden">
+          <div className="overflow-x-auto -mx-2 sm:mx-0">
+          <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Cliente & Pet</TableHead>
@@ -431,6 +435,7 @@ export function ProBookings() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -468,9 +473,10 @@ export function ProBookings() {
                       'Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita.'}
                   </p>
                 </div>
-                <div className="flex justify-end gap-3 pt-2">
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 pt-2">
                   <Button
                     variant="outline"
+                    className="w-full sm:w-auto"
                     onClick={() => {
                       setShowConfirmDialog(false)
                       setPendingAction(null)
@@ -481,6 +487,7 @@ export function ProBookings() {
                   <Button 
                     onClick={confirmStatusChange}
                     variant={pendingAction.status === 'CANCELLED' ? 'destructive' : 'default'}
+                    className="w-full sm:w-auto"
                   >
                     {pendingAction.status === 'CONFIRMED' ? 'Confirmar' : 
                      pendingAction.status === 'DONE' ? 'Concluir' : 
@@ -832,26 +839,26 @@ function BookingDetailDialog({ booking, onClose, onStatusChange, onUpdate }: Boo
         )}
 
         {/* Ações */}
-        <div className="flex justify-between">
-          <Button variant="outline" onClick={onClose}>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-4">
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
             Fechar
           </Button>
           
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             {/* <Button variant="outline">
               <MessageSquare className="w-4 h-4 mr-2" />
               Chat
             </Button> */}
             
             {booking.status === 'PENDING' && (
-              <Button onClick={() => handleConfirmClick('CONFIRMED')}>
+              <Button onClick={() => handleConfirmClick('CONFIRMED')} className="w-full sm:w-auto">
                 <CheckCircle className="w-4 h-4 mr-2" />
                 Confirmar
               </Button>
             )}
             
             {booking.status === 'CONFIRMED' && (
-              <Button onClick={() => handleConfirmClick('DONE')}>
+              <Button onClick={() => handleConfirmClick('DONE')} className="w-full sm:w-auto">
                 <CheckCircle className="w-4 h-4 mr-2" />
                 Concluir
               </Button>
@@ -861,6 +868,7 @@ function BookingDetailDialog({ booking, onClose, onStatusChange, onUpdate }: Boo
               <Button 
                 variant="destructive"
                 onClick={() => setShowCancelForm(true)}
+                className="w-full sm:w-auto"
               >
                 <XCircle className="w-4 h-4 mr-2" />
                 Cancelar

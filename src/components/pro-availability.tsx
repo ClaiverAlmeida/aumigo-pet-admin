@@ -205,7 +205,7 @@ export function ProAvailability() {
 
   if (isLoading) {
     return (
-      <div className="p-10 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 sm:p-6 lg:p-10 flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           <p className="text-muted-foreground">Carregando horários...</p>
@@ -215,19 +215,19 @@ export function ProAvailability() {
   }
 
   return (
-    <div className="p-10 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="p-4 sm:p-6 lg:p-10 space-y-6 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h2>Agenda & Disponibilidade</h2>
-          <p className="text-muted-foreground">Configure seus horários de atendimento</p>
+          <h2 className="text-xl sm:text-2xl font-semibold">Agenda & Disponibilidade</h2>
+          <p className="text-sm text-muted-foreground mt-1">Configure seus horários de atendimento</p>
         </div>
         
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={loadOpeningHours} disabled={isLoading}>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button variant="outline" size="sm" onClick={loadOpeningHours} disabled={isLoading} className="w-full sm:w-auto">
             <Clock className="w-4 h-4 mr-2" />
             Recarregar
           </Button>
-          <Button size="sm" onClick={handleSave} disabled={isSaving}>
+          <Button size="sm" onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
             {isSaving ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -250,17 +250,17 @@ export function ProAvailability() {
         </Alert>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         {/* Disponibilidade Semanal */}
         <Card>
-          <CardHeader>
+          <CardHeader className="p-4 sm:p-6">
             <CardTitle>Horários Semanais</CardTitle>
             <CardDescription>Configure seus horários padrão para cada dia da semana</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-4 sm:p-6">
             {weekDays.map((day) => (
               <div key={day.id} className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <Switch
                       checked={availability[day.id]?.active || false}
@@ -282,6 +282,7 @@ export function ProAvailability() {
                       size="sm"
                       variant="outline"
                       onClick={() => addTimeSlot(day.id)}
+                      className="w-full sm:w-auto shrink-0"
                     >
                       <Plus className="w-3 h-3 mr-1" />
                       Período
@@ -290,21 +291,21 @@ export function ProAvailability() {
                 </div>
 
                 {availability[day.id]?.active && (
-                  <div className="space-y-2 pl-10">
+                  <div className="space-y-2 pl-0 sm:pl-10">
                     {availability[day.id]?.slots.map((slot, index) => (
-                      <div key={index} className="flex items-center gap-2">
+                      <div key={index} className="flex flex-col sm:flex-row sm:items-center gap-2">
                         <Input
                           type="time"
                           value={slot.start}
                           onChange={(e) => updateTimeSlot(day.id, index, 'start', e.target.value)}
-                          className="w-24"
+                          className="w-full sm:w-24"
                         />
                         <span className="text-muted-foreground">até</span>
                         <Input
                           type="time"
                           value={slot.end}
                           onChange={(e) => updateTimeSlot(day.id, index, 'end', e.target.value)}
-                          className="w-24"
+                          className="w-full sm:w-24"
                         />
                         <Button
                           size="sm"
@@ -372,18 +373,18 @@ export function ProAvailability() {
         {/* Preview de Slots */}
         <div className="space-y-6">
           <Card>
-            <CardHeader>
+            <CardHeader className="p-4 sm:p-6">
               <CardTitle>Próximos Horários</CardTitle>
               <CardDescription>Preview dos seus horários disponíveis</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-6">
               <div className="space-y-2">
                 {['2025-09-06', '2025-09-07', '2025-09-08'].map((date) => {
                   const dayOfWeek = new Date(date).getDay()
                   const dayAvailability = availability[dayOfWeek]
                   
                   return (
-                    <div key={date} className="flex justify-between items-center py-2">
+                    <div key={date} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 py-2">
                       <div>
                         <p className="font-medium">
                           {new Date(date).toLocaleDateString('pt-BR', { 
