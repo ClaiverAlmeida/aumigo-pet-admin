@@ -35,7 +35,7 @@ export function Header({ currentPageTitle, user, onLogout }: HeaderProps) {
 
   return (
     <header className="border-b bg-background supports-[backdrop-filter]:bg-background/95 backdrop-blur sticky top-0 z-40 shadow-sm">
-      <div className="flex h-14 sm:h-16 items-center px-4 sm:px-6">
+      <div className="flex h-16 items-center px-6">
         {/* Trigger da sidebar e título */}
         <div className="flex items-center gap-4 flex-1">
           <SidebarTrigger />

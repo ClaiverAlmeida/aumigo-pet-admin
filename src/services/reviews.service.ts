@@ -9,7 +9,10 @@ export interface Review {
   responseText?: string;
   responseDate?: string;
   helpful?: number;
+  helpfulByUser?: boolean;
   photos?: number;
+  reportReason?: string;
+  isImportant?: boolean;
   petNames?: string[];
   createdAt: string;
   updatedAt: string;
@@ -19,8 +22,20 @@ export interface Review {
     id: string;
     name: string;
     profilePicture?: string;
+    pets?: Array<{
+      id: string;
+      name: string;
+      species?: string;
+      breed?: string;
+      avatar?: string;
+      isActive?: boolean;
+    }>;
   };
   provider?: {
+    id: string; 
+    name: string;
+  };
+  company?: {
     id: string;
     name: string;
   };
@@ -29,6 +44,12 @@ export interface Review {
 export interface ReviewStatistics {
   averageRating: number;
   totalReviews: number;
+  totalHelpful?: number;
+  helpfulPorProvider?: Array<{
+    providerId: string;
+    providerName: string;
+    totalHelpful: number;
+  }>;
   ratingDistribution: Array<{
     stars: number;
     count: number;
@@ -87,7 +108,7 @@ export class ReviewsService {
 
   async responder(id: string, data: ResponseReviewData): Promise<{ success: boolean; data?: Review; error?: string; message?: string }> {
     try {
-      const result = await api.post<{ data: Review; message?: string }>(`/reviews/${id}/response`, data);
+      const result = await api.patch<{ data: Review; message?: string }>(`/reviews/${id}/response`, data);
 
       if (result.success && result.data) {
         const backendResponse = result.data as any;
@@ -123,17 +144,18 @@ export class ReviewsService {
     }
   }
 
-  async marcarComoUtil(id: string): Promise<{ success: boolean; data?: Review; error?: string; message?: string }> {
+  async marcarComoUtil(id: string): Promise<{ success: boolean; data?: Review; helpfulByUser?: boolean; error?: string; message?: string }> {
     try {
-      const result = await api.post<{ data: Review; message?: string }>(`/reviews/${id}/helpful`, {});
+      const result = await api.patch<{ data: Review; helpfulByUser?: boolean; message?: string }>(`/reviews/${id}/helpful`, {});
 
       if (result.success && result.data) {
         const backendResponse = result.data as any;
         const reviewData: any = backendResponse.data || backendResponse;
         const message = backendResponse.message || 'Marcado como útil';
+        const helpfulByUser = backendResponse.helpfulByUser ?? reviewData?.helpfulByUser ?? false;
 
         if (reviewData && reviewData.id) {
-          return { success: true, data: reviewData, message };
+          return { success: true, data: { ...reviewData, helpfulByUser }, helpfulByUser, message };
         }
       }
 
@@ -143,19 +165,66 @@ export class ReviewsService {
     }
   }
 
-  async reportarProblema(id: string, motivo: string): Promise<{ success: boolean; error?: string; message?: string }> {
+  async reportarProblema(
+    id: string,
+    reportReason: string
+  ): Promise<{
+    success: boolean;
+    error?: string;
+    message?: string;
+    data?: { reportReason?: string; alreadyReported?: boolean };
+  }> {
     try {
-      const result = await api.post<{ message?: string }>(`/reviews/${id}/report`, { motivo });
+      const result = await api.patch<{
+        message?: string;
+        reportReason?: string;
+        alreadyReported?: boolean;
+      }>(`/reviews/${id}/report`, { reportReason });
 
       if (result.success) {
         const backendResponse = result.data as any;
-        const message = backendResponse?.message || 'Problema reportado com sucesso';
-        return { success: true, message };
+        return {
+          success: true,
+          message: backendResponse?.message || 'Problema reportado com sucesso',
+          data: {
+            reportReason: backendResponse?.reportReason,
+            alreadyReported: backendResponse?.alreadyReported,
+          },
+        };
       }
 
       return { success: false, error: result.error || 'Erro ao reportar problema' };
     } catch (error: any) {
       return { success: false, error: error.message || 'Erro ao reportar problema' };
+    }
+  }
+
+  async marcarComoImportante(
+    id: string
+  ): Promise<{
+    success: boolean;
+    data?: { isImportant?: boolean };
+    error?: string;
+    message?: string;
+  }> {
+    try {
+      const result = await api.patch<{
+        isImportant?: boolean;
+        message?: string;
+      }>(`/reviews/${id}/important`, {});
+
+      if (result.success) {
+        const backendResponse = result.data as any;
+        return {
+          success: true,
+          data: { isImportant: backendResponse?.isImportant },
+          message: backendResponse?.message,
+        };
+      }
+
+      return { success: false, error: result.error || 'Erro ao marcar como importante' };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Erro ao marcar como importante' };
     }
   }
 }

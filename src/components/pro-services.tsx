@@ -1142,8 +1142,8 @@ function ServiceDialog({ service, providers, onSave, onClose }: ServiceDialogPro
   }
 
   return (
-    <DialogContent className="max-w-2xl">
-      <DialogHeader>
+    <DialogContent className="max-w-2xl max-h-[90vh] sm:max-h-[85vh] flex flex-col overflow-hidden p-4 sm:p-6">
+      <DialogHeader className="flex-shrink-0">
         <DialogTitle>
           {service ? 'Editar Item' : 'Novo Item'}
         </DialogTitle>
@@ -1152,7 +1152,8 @@ function ServiceDialog({ service, providers, onSave, onClose }: ServiceDialogPro
         </DialogDescription>
       </DialogHeader>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1 -mr-1">
         <div>
           <Label htmlFor="provider">
             Serviço <span className="text-red-500">*</span>
@@ -1313,8 +1314,9 @@ function ServiceDialog({ service, providers, onSave, onClose }: ServiceDialogPro
           />
           <Label htmlFor="active">Item ativo (visível para clientes)</Label>
         </div>
+        </div>
 
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 flex-shrink-0 pt-4 mt-4 border-t">
           <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
             Cancelar
           </Button>
