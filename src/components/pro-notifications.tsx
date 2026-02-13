@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { NotificationCenter, useNotifications } from './notification-center'
 import { Button } from './ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
@@ -13,10 +13,15 @@ import {
   Download
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { notificationsService } from '../services/notifications.service'
 
 export function ProNotifications() {
   const {
     notifications,
+    historyNotifications,
+    loading,
+    historyLoading,
+    loadHistory,
     markAsRead,
     markAllAsRead,
     removeNotification,
@@ -24,14 +29,28 @@ export function ProNotifications() {
     unreadCount
   } = useNotifications()
 
-  const handleExportNotifications = () => {
-    toast.loading('Exportando histórico de notificações...')
-    setTimeout(() => {
+  useEffect(() => {
+    loadHistory()
+  }, [loadHistory])
+
+  const handleExportNotifications = async () => {
+    toast.loading('Carregando histórico completo...')
+    const toExport = await loadHistory()
+    if (toExport.length === 0) {
+      toast.dismiss()
+      toast.info('Nenhuma notificação para exportar')
+      return
+    }
+    try {
+      notificationsService.exportToCsv(toExport)
       toast.dismiss()
       toast.success('📥 Histórico exportado!', {
-        description: 'Arquivo CSV baixado com sucesso.'
+        description: 'Arquivo CSV com todo o período baixado.'
       })
-    }, 2000)
+    } catch {
+      toast.dismiss()
+      toast.error('Erro ao exportar notificações')
+    }
   }
 
   return (
@@ -86,13 +105,19 @@ export function ProNotifications() {
             {/* Notifications Tab */}
             <TabsContent value="notifications" className="h-full">
               <div className="flex justify-center h-full">
-                <NotificationCenter
-                  notifications={notifications}
-                  onMarkAsRead={markAsRead}
-                  onMarkAllAsRead={markAllAsRead}
-                  onRemoveNotification={removeNotification}
-                  onClearAll={clearAll}
-                />
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-aumigo-orange" />
+                  </div>
+                ) : (
+                  <NotificationCenter
+                    notifications={notifications}
+                    onMarkAsRead={markAsRead}
+                    onMarkAllAsRead={markAllAsRead}
+                    onRemoveNotification={removeNotification}
+                    onClearAll={clearAll}
+                  />
+                )}
               </div>
             </TabsContent>
 
@@ -212,23 +237,14 @@ export function ProNotifications() {
                       Histórico de Notificações
                     </CardTitle>
                     <CardDescription className="text-sm">
-                      Visualize e gerencie o histórico completo das suas notificações
+                      Registro completo de todas as notificações recebidas. Limpar e marcar como lida continuam funcionando na aba Notificações. Exporte todo o período quando precisar.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4 p-4 sm:p-6">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <Button variant="outline" size="sm" className="text-xs sm:text-sm">
-                          <Filter className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                          <span className="hidden sm:inline">Filtrar por Tipo</span>
-                          <span className="sm:hidden">Tipo</span>
-                        </Button>
-                        <Button variant="outline" size="sm" className="text-xs sm:text-sm">
-                          <Filter className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                          <span className="hidden sm:inline">Filtrar por Data</span>
-                          <span className="sm:hidden">Data</span>
-                        </Button>
-                      </div>
+                      <Badge variant="secondary" className="text-xs sm:text-sm">
+                        {historyNotifications.length} notificações no histórico
+                      </Badge>
                       <Button 
                         variant="outline" 
                         size="sm"
@@ -242,11 +258,43 @@ export function ProNotifications() {
                     </div>
 
                     <div className="border rounded-lg p-4 sm:p-6">
-                      <div className="text-center py-6 sm:py-8 text-muted-foreground">
-                        <Archive className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm sm:text-base">Histórico detalhado em desenvolvimento</p>
-                        <p className="text-xs sm:text-sm mt-1">Em breve você poderá visualizar e buscar em todo o histórico</p>
-                      </div>
+                      {historyLoading ? (
+                        <div className="flex justify-center py-12">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-aumigo-orange" />
+                        </div>
+                      ) : historyNotifications.length === 0 ? (
+                        <div className="text-center py-6 sm:py-8 text-muted-foreground">
+                          <Archive className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm sm:text-base">Nenhuma notificação no histórico</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 max-h-[400px] overflow-auto">
+                          {historyNotifications.map((n) => (
+                            <div
+                              key={n.id}
+                              className={`p-3 rounded-lg border text-sm ${!n.read ? 'bg-aumigo-orange/5 border-aumigo-orange/20' : 'bg-muted/30'}`}
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-medium truncate">{n.title}</p>
+                                  <p className="text-muted-foreground text-xs truncate">{n.description}</p>
+                                  <div className="flex flex-wrap gap-2 mt-1 text-xs text-muted-foreground">
+                                    <span>{n.type}</span>
+                                    {n.bookingId && <span>• ID: {n.bookingId}</span>}
+                                    <span>• {n.timestamp.toLocaleString('pt-BR')}</span>
+                                    {n.read ? <Badge variant="outline" className="text-[10px]">Lida</Badge> : <Badge className="text-[10px] bg-aumigo-orange">Não lida</Badge>}
+                                  </div>
+                                </div>
+                                {!n.read && (
+                                  <Button variant="ghost" size="sm" className="flex-shrink-0" onClick={() => markAsRead(n.id)}>
+                                    Marcar lida
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

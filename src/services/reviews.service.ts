@@ -10,7 +10,6 @@ export interface Review {
   responseDate?: string;
   helpful?: number;
   helpfulByUser?: boolean;
-  photos?: number;
   reportReason?: string;
   isImportant?: boolean;
   petNames?: string[];

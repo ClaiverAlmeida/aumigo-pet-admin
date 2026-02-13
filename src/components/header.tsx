@@ -51,7 +51,7 @@ export function Header({ currentPageTitle, user, onLogout }: HeaderProps) {
         {/* Ações do usuário */}
         <div className="flex items-center gap-3">
           {/* Notificações */}
-          <NotificationBell showFullCenter={false} maxPreview={4} />
+          <NotificationBell showFullCenter={false} maxPreview={10} />
 
           {/* Menu do usuário */}
           <DropdownMenu>

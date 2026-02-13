@@ -52,7 +52,6 @@ interface ReviewData {
   } | null
   helpful: number
   helpfulByUser?: boolean
-  photos: number
   reportReason?: string
   isImportant?: boolean
 }
@@ -79,7 +78,6 @@ function convertBackendReview(backendReview: BackendReview): ReviewData {
     } : null,
     helpful: backendReview.helpful || 0,
     helpfulByUser: backendReview.helpfulByUser ?? false,
-    photos: backendReview.photos || 0,
     reportReason: backendReview.reportReason,
     isImportant: backendReview.isImportant ?? false
   }
@@ -180,19 +178,6 @@ function ReviewCard({ review, onReply, onHelpful, onReport, onMarkImportant, hel
 
         {review.comment && (
           <p className="text-[#6B7280] mb-4 leading-relaxed">{review.comment}</p>
-        )}
-
-        {review.photos > 0 && (
-          <div className="flex items-center gap-2 mb-4">
-            <div className="flex -space-x-2">
-              {[...Array(review.photos)].map((_, i) => (
-                <div key={i} className="w-8 h-8 bg-gray-200 rounded border-2 border-white flex items-center justify-center">
-                  <span className="text-xs text-gray-500">📷</span>
-                </div>
-              ))}
-            </div>
-            <span className="text-sm text-[#6B7280]">{review.photos} foto{review.photos > 1 ? 's' : ''}</span>
-          </div>
         )}
 
         <div className="flex items-center justify-between">

@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { notificationsService } from '../services/notifications.service'
 import { Card } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
@@ -323,39 +324,102 @@ export function NotificationCenter({
   )
 }
 
-// Hook para gerenciar notificações
+// Mapeia notificação da API para o formato do componente
+function mapApiToNotification(api: { id: string; title: string; message: string; entityType?: string; entityId?: string; isRead: boolean; createdAt: string }): Notification {
+  const typeMap: Record<string, Notification['type']> = {
+    booking: 'booking',
+    reminder: 'system',
+    review: 'review',
+    vaccine: 'system',
+    user: 'client',
+    system: 'system',
+    sharedTutor: 'client',
+  }
+  return {
+    id: api.id,
+    type: typeMap[api.entityType || ''] || 'system',
+    priority: 'medium',
+    title: api.title,
+    description: api.message,
+    timestamp: new Date(api.createdAt),
+    read: api.isRead,
+    bookingId: api.entityId,
+  }
+}
+
+// Hook para gerenciar notificações (conectado à API)
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [historyNotifications, setHistoryNotifications] = useState<Notification[]>([])
+  const [loading, setLoading] = useState(true)
+  const [historyLoading, setHistoryLoading] = useState(false)
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(notification => 
-        notification.id === id 
-          ? { ...notification, read: true }
-          : notification
+  const loadNotifications = useCallback(async () => {
+    setLoading(true)
+    // Busca notificações ativas (exclui as que foram removidas/limpas)
+    const result = await notificationsService.getAll({ limit: 500 })
+    if (result.success && result.data) {
+      setNotifications(result.data.notifications.map(mapApiToNotification))
+    }
+    setLoading(false)
+  }, [])
+
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true)
+    // Busca histórico completo incluindo removidas/limpas para exportação
+    const result = await notificationsService.getAll({ limit: 2000, includeDeleted: true })
+    if (result.success && result.data) {
+      const mapped = result.data.notifications.map(mapApiToNotification)
+      setHistoryNotifications(mapped)
+      setHistoryLoading(false)
+      return mapped
+    }
+    setHistoryLoading(false)
+    return []
+  }, [])
+
+  useEffect(() => {
+    loadNotifications()
+  }, [loadNotifications])
+
+  const markAsRead = useCallback(async (id: string) => {
+    const result = await notificationsService.markAsRead(id)
+    if (result.success) {
+      setNotifications(prev =>
+        prev.map(n => (n.id === id ? { ...n, read: true } : n))
       )
-    )
-  }
+      setHistoryNotifications(prev =>
+        prev.map(n => (n.id === id ? { ...n, read: true } : n))
+      )
+    }
+  }, [])
 
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notification => ({ ...notification, read: true }))
-    )
-  }
+  const markAllAsRead = useCallback(async () => {
+    const result = await notificationsService.markAllAsRead()
+    if (result.success) {
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+    }
+  }, [])
 
-  const removeNotification = (id: string) => {
-    setNotifications(prev => prev.filter(notification => notification.id !== id))
-  }
+  const removeNotification = useCallback(async (id: string) => {
+    const result = await notificationsService.remove(id)
+    if (result.success) {
+      setNotifications(prev => prev.filter(n => n.id !== id))
+    }
+  }, [])
 
-  const clearAll = () => {
-    setNotifications([])
-  }
+  const clearAll = useCallback(async () => {
+    const result = await notificationsService.clearAll()
+    if (result.success) {
+      setNotifications([])
+    }
+  }, [])
 
   const addNotification = (notification: Omit<Notification, 'id' | 'timestamp'>) => {
     const newNotification: Notification = {
       ...notification,
       id: Date.now().toString(),
-      timestamp: new Date()
+      timestamp: new Date(),
     }
     setNotifications(prev => [newNotification, ...prev])
   }
@@ -364,11 +428,16 @@ export function useNotifications() {
 
   return {
     notifications,
+    historyNotifications,
+    loading,
+    historyLoading,
+    loadNotifications,
+    loadHistory,
     markAsRead,
     markAllAsRead,
     removeNotification,
     clearAll,
     addNotification,
-    unreadCount
+    unreadCount,
   }
 }
