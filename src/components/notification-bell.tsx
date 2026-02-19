@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
-import { ScrollArea } from './ui/scroll-area'
 import { Bell, BellRing } from 'lucide-react'
 import { NotificationCenter, useNotifications, type Notification } from './notification-center'
 import { NotificationItem } from './notification-item'
@@ -158,8 +157,8 @@ export function NotificationBell({
               <p className="text-xs sm:text-sm">Nenhuma notificação</p>
             </div>
           ) : (
-            <ScrollArea className="max-h-[250px] sm:max-h-[300px]">
-              <div className="space-y-1 sm:space-y-2">
+            <div className="max-h-[280px] sm:max-h-[360px] overflow-y-auto overflow-x-hidden">
+              <div className="space-y-1 sm:space-y-2 pr-1">
                 {recentNotifications.map((notification) => (
                   <div
                     key={notification.id}
@@ -195,7 +194,7 @@ export function NotificationBell({
                   </div>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
           )}
 
           {/* Footer */}

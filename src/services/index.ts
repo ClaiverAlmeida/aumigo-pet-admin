@@ -34,3 +34,7 @@ export type { User } from './users.service';
 // 📅 SERVIÇO DE BOOKINGS
 export { bookingsService, BookingsService } from './bookings.service';
 export type { Booking, BookingStatus, UpdateBookingData } from './bookings.service';
+
+// ⭐ SERVIÇO DE REVIEWS
+export { reviewsService, ReviewsService } from './reviews.service';
+export type { Review, ReviewStatistics, ResponseReviewData } from './reviews.service';

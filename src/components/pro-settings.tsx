@@ -650,14 +650,14 @@ export function ProSettings() {
       </Dialog>
 
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b bg-card flex-shrink-0">
-        <div>
-          <h1 className="text-foreground mb-2">Configurações</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-6 border-b bg-card flex-shrink-0 gap-4">
+        <div className="min-w-0">
+          <h1 className="text-foreground mb-2 text-lg sm:text-xl">Configurações</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
             Gerencie suas preferências e configurações da conta
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-shrink-0">
           <Badge className="bg-aumigo-mint text-white">
             Perfil Aprovado
           </Badge>
@@ -681,9 +681,9 @@ export function ProSettings() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 p-6 overflow-hidden">
+      <div className="flex-1 p-4 sm:p-6 overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-          <TabsList className="grid w-full grid-cols-6 mb-6">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 mb-4 sm:mb-6">
             {/* <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Perfil
@@ -714,7 +714,7 @@ export function ProSettings() {
             {/* Profile Tab */}
             <TabsContent value="profile" className="space-y-6">
               <Card>
-                <CardHeader>
+                <CardHeader className="p-4 sm:p-6">
                   <CardTitle className="flex items-center gap-2">
                     <User className="h-5 w-5 text-aumigo-orange" />
                     Informações Pessoais
@@ -723,7 +723,7 @@ export function ProSettings() {
                     Atualize suas informações básicas e foto de perfil
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="space-y-6 p-4 sm:p-6">
                   {isLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <p className="text-muted-foreground">Carregando dados do usuário...</p>
@@ -731,7 +731,7 @@ export function ProSettings() {
                   ) : (
                     <>
                   {/* Avatar Section */}
-                  <div className="flex items-center gap-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
                     <div className="relative">
                       <Avatar className="h-24 w-24">
                         <AvatarImage src={profileData.profilePicture} alt={profileData.name} />
@@ -760,7 +760,7 @@ export function ProSettings() {
                       <p className="text-muted-foreground text-sm mb-3">
                         Recomendamos uma foto clara e profissional
                       </p>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <Button 
                           variant="outline" 
                           size="sm"
@@ -789,7 +789,7 @@ export function ProSettings() {
                   <Separator />
 
                   {/* Basic Info */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">Nome Completo *</Label>
                       <Input
@@ -811,7 +811,7 @@ export function ProSettings() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="email">Email *</Label>
                       <Input
@@ -834,7 +834,7 @@ export function ProSettings() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="birthDate">Data de Nascimento</Label>
                       <Input
@@ -894,7 +894,7 @@ export function ProSettings() {
                     </div>
                   </div>
 
-                  <div className="flex justify-between">
+                  <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-4">
                     <Button 
                       variant="outline" 
                       onClick={() => {
@@ -987,7 +987,7 @@ export function ProSettings() {
                     </div>
                   </div>
 
-                  <div className="flex justify-between">
+                  <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-4">
                     <Button 
                       variant="outline" 
                       onClick={() => {
@@ -1030,7 +1030,7 @@ export function ProSettings() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {/* Working Hours */}
                     <div className="space-y-4">
                       <h4 className="font-medium flex items-center gap-2">
@@ -1107,7 +1107,7 @@ export function ProSettings() {
                   {/* Booking Policies */}
                   <div className="space-y-4">
                     <h4 className="font-medium">Políticas de Agendamento</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Agendamento com Antecedência</Label>
                         <Select value={availability.advanceBookingDays.toString()} onValueChange={(value) => 
@@ -1155,7 +1155,7 @@ export function ProSettings() {
                     />
                   </div>
 
-                  <div className="flex justify-between">
+                  <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-4">
                     <Button 
                       variant="outline" 
                       onClick={() => {
@@ -1204,7 +1204,7 @@ export function ProSettings() {
                       <DollarSign className="h-4 w-4" />
                       Dados Bancários
                     </h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Conta Bancária</Label>
                         <Input
@@ -1229,7 +1229,7 @@ export function ProSettings() {
                   {/* Commission & Withdrawal */}
                   <div className="space-y-4">
                     <h4 className="font-medium">Comissão e Saques</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="p-4 border border-border/50 rounded-lg bg-muted/30">
                         <div className="text-sm text-muted-foreground mb-1">Taxa da plataforma</div>
                         <div className="text-2xl font-bold text-aumigo-orange">{payment.commission}%</div>
@@ -1280,7 +1280,7 @@ export function ProSettings() {
                     </div>
                   </div>
 
-                  <div className="flex justify-between">
+                  <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-4">
                     <Button 
                       variant="outline" 
                       onClick={() => {
@@ -1438,7 +1438,7 @@ export function ProSettings() {
                     </Button>
                   </div>
 
-                  <div className="flex justify-between">
+                  <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-4">
                     <Button 
                       variant="outline" 
                       onClick={() => {
@@ -1483,7 +1483,7 @@ export function ProSettings() {
                       <Globe className="h-4 w-4" />
                       Idioma e Região
                     </h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Idioma da Interface</Label>
                         <Select defaultValue="pt-BR">
@@ -1545,7 +1545,7 @@ export function ProSettings() {
                   {/* Data Management */}
                   <div className="space-y-4">
                     <h4 className="font-medium">Gerenciamento de Dados</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Button 
                         variant="outline" 
                         className="h-auto p-4 flex flex-col items-start text-left"

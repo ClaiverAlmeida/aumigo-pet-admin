@@ -402,7 +402,7 @@ export function ProServices() {
 
   if (loading) {
     return (
-      <div className="p-10 flex items-center justify-center">
+      <div className="p-4 sm:p-6 lg:p-10 flex items-center justify-center min-h-[400px]">
         <Loader2 className="w-8 h-8 animate-spin text-aumigo-orange" />
       </div>
     )
@@ -410,7 +410,7 @@ export function ProServices() {
 
   if (error) {
     return (
-      <div className="p-10">
+      <div className="p-4 sm:p-6 lg:p-10">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
@@ -420,18 +420,18 @@ export function ProServices() {
   }
 
   return (
-    <div className="p-10 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="w-full min-w-0 p-4 sm:p-6 lg:p-10 space-y-6 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h2>Meus Serviços</h2>
-          <p className="text-muted-foreground">Gerencie serviços e itens da sua empresa</p>
+          <h2 className="text-xl sm:text-2xl font-semibold">Meus Serviços</h2>
+          <p className="text-sm text-muted-foreground mt-1">Gerencie serviços e itens da sua empresa</p>
         </div>
       </div>
 
       {/* Seção de Providers */}
       <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
               <CardTitle>Serviços oferecidos</CardTitle>
               <CardDescription>
@@ -445,7 +445,7 @@ export function ProServices() {
               }
             }}>
               <DialogTrigger asChild>
-                <Button onClick={() => setEditingProvider(null)}>
+                <Button onClick={() => setEditingProvider(null)} className="w-full sm:w-auto">
                   <Plus className="w-4 h-4 mr-2" />
                   Novo Serviço
                 </Button>
@@ -462,7 +462,7 @@ export function ProServices() {
             </Dialog>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6 overflow-hidden">
           {providers.length === 0 ? (
             <div className="text-center py-10">
               <p className="text-muted-foreground">Nenhum serviço cadastrado ainda.</p>
@@ -483,8 +483,8 @@ export function ProServices() {
                 <Card key={provider.id} className="cursor-pointer hover:border-aumigo-orange transition-colors"
                   onClick={() => setSelectedProviderId(selectedProviderId === provider.id ? null : provider.id)}
                 >
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
+                  <CardHeader className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                       <div>
                         <CardTitle className="text-lg">{provider.name}</CardTitle>
                         <Badge variant="outline" className="mt-2">
@@ -493,7 +493,7 @@ export function ProServices() {
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
+                          <Button variant="ghost" className="h-8 w-8 p-0 shrink-0">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -520,7 +520,7 @@ export function ProServices() {
                       </DropdownMenu>
                     </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-4 sm:p-6">
                     {provider.description && (
                       <p className="text-sm text-muted-foreground mb-2">{provider.description}</p>
                     )}
@@ -537,8 +537,8 @@ export function ProServices() {
 
       {/* Seção de Services */}
       <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
               <CardTitle>Catálogo de Itens de Serviço</CardTitle>
               <CardDescription>
@@ -554,6 +554,7 @@ export function ProServices() {
             }}>
               <DialogTrigger asChild>
                 <Button 
+                  className="w-full sm:w-auto"
                   onClick={() => {
                     setEditingService(null)
                     if (providers.length === 0) {
@@ -598,7 +599,8 @@ export function ProServices() {
               )}
             </div>
           ) : (
-          <Table>
+          <div className="overflow-x-auto -mx-2 sm:mx-0">
+          <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Item</TableHead>
@@ -700,6 +702,7 @@ export function ProServices() {
               ))}
             </TableBody>
           </Table>
+          </div>
           )}
         </CardContent>
       </Card>
@@ -872,7 +875,7 @@ function ProviderDialog({ provider, companyData, onSave, onClose }: ProviderDial
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="provider-address">Endereço</Label>
               <Input
@@ -893,7 +896,7 @@ function ProviderDialog({ provider, companyData, onSave, onClose }: ProviderDial
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="provider-city">Cidade</Label>
               <Input
@@ -934,7 +937,7 @@ function ProviderDialog({ provider, companyData, onSave, onClose }: ProviderDial
         {/* Campos de Contato - Mostrar apenas se NÃO usar dados da empresa */}
         {!useCompanyContact && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="provider-phone">Telefone</Label>
               <Input
@@ -968,7 +971,7 @@ function ProviderDialog({ provider, companyData, onSave, onClose }: ProviderDial
         </div>
         )}
 
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex items-center space-x-2">
             <Switch
               id="provider-offersDelivery"
@@ -987,11 +990,11 @@ function ProviderDialog({ provider, companyData, onSave, onClose }: ProviderDial
           </div>
         </div>
 
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onClose}>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
             Cancelar
           </Button>
-          <Button type="submit">
+          <Button type="submit" className="w-full sm:w-auto">
             {provider ? 'Atualizar' : 'Criar'} Serviço
           </Button>
         </div>
@@ -1139,8 +1142,8 @@ function ServiceDialog({ service, providers, onSave, onClose }: ServiceDialogPro
   }
 
   return (
-    <DialogContent className="max-w-2xl">
-      <DialogHeader>
+    <DialogContent className="max-w-2xl max-h-[90vh] sm:max-h-[85vh] flex flex-col overflow-hidden p-4 sm:p-6">
+      <DialogHeader className="flex-shrink-0">
         <DialogTitle>
           {service ? 'Editar Item' : 'Novo Item'}
         </DialogTitle>
@@ -1149,7 +1152,8 @@ function ServiceDialog({ service, providers, onSave, onClose }: ServiceDialogPro
         </DialogDescription>
       </DialogHeader>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1 -mr-1">
         <div>
           <Label htmlFor="provider">
             Serviço <span className="text-red-500">*</span>
@@ -1272,7 +1276,7 @@ function ServiceDialog({ service, providers, onSave, onClose }: ServiceDialogPro
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="price">Preço (R$)</Label>
             <Input
@@ -1310,12 +1314,13 @@ function ServiceDialog({ service, providers, onSave, onClose }: ServiceDialogPro
           />
           <Label htmlFor="active">Item ativo (visível para clientes)</Label>
         </div>
+        </div>
 
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onClose}>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 flex-shrink-0 pt-4 mt-4 border-t">
+          <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
             Cancelar
           </Button>
-          <Button type="submit">
+          <Button type="submit" className="w-full sm:w-auto">
             {service ? 'Atualizar' : 'Criar'} Item
           </Button>
         </div>
