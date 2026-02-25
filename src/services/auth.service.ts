@@ -136,6 +136,27 @@ export class AuthService {
     }
   }
 
+  // Alterar senha (usuário autenticado)
+  async changePassword(currentPassword: string, newPassword: string) {
+    try {
+      const result = await api.post('/auth/change-password', {
+        currentPassword,
+        newPassword,
+      });
+
+      if (result.success) {
+        return { success: true };
+      }
+      return { success: false, error: result.error || 'Erro ao alterar senha' };
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Erro ao alterar senha';
+      return { success: false, error: message };
+    }
+  }
+
   // Refresh token
   async refreshToken() {
     if (!this.authState.refreshToken) {

@@ -15,6 +15,9 @@ import { Auth } from './components/auth'
 import { AdminAuth } from './components/admin-auth'
 import { AdminLayout } from './components/admin-layout'
 import { AdminDashboard } from './components/admin-dashboard'
+import { AdminUsers } from './components/admin-users'
+import { AdminComingSoon } from './components/admin-coming-soon'
+import { AdminSettings } from './components/admin-settings'
 import { RouteSwitcher } from './components/route-switcher'
 import { OnboardingCompany } from './components/onboarding-company'
 import { Toaster } from './components/ui/sonner'
@@ -118,11 +121,13 @@ export default function App() {
 
   // Handler de navegação que atualiza a URL
   const handleNavigate = (page: string) => {
-    setCurrentPage(page)
+    // Evita duplicar /admin quando o caller passar "admin/users" em vez de "users"
+    const normalizedPage = page.replace(/^admin\/?,?/, '') || 'dashboard'
+    setCurrentPage(normalizedPage)
     if (currentMode === 'admin') {
-      navigate(`/admin/${page}`)
+      navigate(`/admin/${normalizedPage}`)
     } else {
-      navigate(`/pro/${page}`)
+      navigate(`/pro/${normalizedPage}`)
     }
   }
 
@@ -130,9 +135,13 @@ export default function App() {
     if (currentMode === 'admin') {
       switch (currentPage) {
         case 'dashboard':
-          return <AdminDashboard onNavigate={setCurrentPage} />
+          return <AdminDashboard onNavigate={handleNavigate} />
+        case 'users':
+          return <AdminUsers onNavigate={handleNavigate} />
+        case 'settings':
+          return <AdminSettings adminUser={adminUser ?? undefined} />
         default:
-          return <AdminDashboard onNavigate={setCurrentPage} />
+          return <AdminComingSoon pageId={currentPage} onNavigate={handleNavigate} />
       }
     } else {
       switch (currentPage) {
@@ -233,6 +242,12 @@ export default function App() {
       </div>
     )
   } else {
+    // Admin logado não pode acessar painel pro: redirecionar para admin
+    if (adminUser) {
+      navigate('/admin/dashboard')
+      return null
+    }
+
     // Se não há usuário logado, mostrar tela de autenticação profissional
     if (!user) {
       return (

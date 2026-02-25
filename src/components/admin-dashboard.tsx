@@ -1,419 +1,296 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
-import { Badge } from './ui/badge'
 import { Button } from './ui/button'
-import { Progress } from './ui/progress'
 import {
-  TrendingUp,
-  TrendingDown,
-  AlertCircle,
   Users,
+  UserCog,
+  Building2,
+  PawPrint,
+  Store,
+  ListChecks,
   Calendar,
+  Star,
+  Heart,
   CreditCard,
-  DollarSign,
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
+  MessageSquare,
+  Bell,
   ArrowRight,
-  Webhook,
-  Shield,
-  Activity,
-  BarChart3
+  Loader2,
+  RefreshCw,
+  BarChart3,
 } from 'lucide-react'
+import { dashboardService, type DashboardStats } from '../services/dashboard.service'
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void
 }
 
-interface KPICard {
-  title: string
-  value: string
-  change: string
-  changeType: 'up' | 'down' | 'neutral'
-  icon: any
-  description: string
-  clickAction?: string
+const BOOKING_STATUS_LABEL: Record<string, string> = {
+  PENDING: 'Pendentes',
+  CONFIRMED: 'Confirmados',
+  DONE: 'Concluídos',
+  CANCELLED: 'Cancelados',
 }
 
-interface AlertItem {
-  type: 'critical' | 'warning' | 'info'
+/** Card de métrica reutilizável */
+function MetricCard({
+  title,
+  value,
+  description,
+  icon: Icon,
+  iconColor = 'text-aumigo-teal',
+  onClick,
+  loading,
+}: {
   title: string
-  message: string
-  action: string
-  actionPage: string
-  timestamp: string
+  value: number | string
+  description?: string
+  icon: React.ElementType
+  iconColor?: string
+  onClick?: () => void
+  loading?: boolean
+}) {
+  const content = (
+    <Card
+      className={`transition-shadow ${onClick ? 'cursor-pointer hover:shadow-md' : ''} border-aumigo-teal/10`}
+      onClick={onClick}
+    >
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-aumigo-gray">{title}</CardTitle>
+        <Icon className={`h-5 w-5 ${iconColor}`} />
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <Loader2 className="h-6 w-6 animate-spin text-aumigo-gray" />
+        ) : (
+          <>
+            <div className="text-2xl font-semibold text-aumigo-teal">{value}</div>
+            {description && <p className="text-xs text-aumigo-gray mt-1">{description}</p>}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
+  return content
 }
 
-const kpiCards: KPICard[] = [
-  {
-    title: 'GMV Hoje',
-    value: 'R$ 45.230',
-    change: '+12,5%',
-    changeType: 'up',
-    icon: DollarSign,
-    description: 'vs. ontem',
-    clickAction: 'payments'
-  },
-  {
-    title: 'Take Rate',
-    value: '18,7%',
-    change: '+0,3%',
-    changeType: 'up',
-    icon: TrendingUp,
-    description: 'média mensal',
-    clickAction: 'analytics'
-  },
-  {
-    title: 'Pedidos Hoje',
-    value: '234',
-    change: '+8,2%',
-    changeType: 'up',
-    icon: Calendar,
-    description: 'vs. ontem',
-    clickAction: 'bookings'
-  },
-  {
-    title: 'Chargebacks',
-    value: '12',
-    change: '+2',
-    changeType: 'down',
-    icon: CreditCard,
-    description: 'últimos 7 dias',
-    clickAction: 'incidents'
-  }
-]
-
-const alerts: AlertItem[] = [
-  {
-    type: 'critical',
-    title: 'Webhooks com erro',
-    message: '8 webhooks falhando há mais de 30min',
-    action: 'Verificar',
-    actionPage: 'webhooks',
-    timestamp: '5 min atrás'
-  },
-  {
-    type: 'critical',
-    title: 'KYC parado',
-    message: '12 documentos aguardando triagem há mais de 48h',
-    action: 'Triar',
-    actionPage: 'kyc',
-    timestamp: '1 hora atrás'
-  },
-  {
-    type: 'warning',
-    title: 'Pagamentos a conciliar',
-    message: 'R$ 8.450 em pagamentos não conciliados',
-    action: 'Conciliar',
-    actionPage: 'payments',
-    timestamp: '2 horas atrás'
-  },
-  {
-    type: 'info',
-    title: 'Relatório semanal',
-    message: 'Relatório de performance disponível',
-    action: 'Ver',
-    actionPage: 'analytics',
-    timestamp: '3 horas atrás'
-  }
-]
-
-interface QueueItem {
+/** Seção do dashboard com título e grid de métricas */
+function Section({
+  title,
+  description,
+  children,
+}: {
   title: string
-  count: number
-  priority: 'high' | 'medium' | 'low'
-  sla: string
-  slaStatus: 'ok' | 'warning' | 'critical'
-  page: string
+  description?: string
+  children?: React.ReactNode
+}) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <h2 className="text-lg font-semibold text-aumigo-teal">{title}</h2>
+        {description && <p className="text-sm text-aumigo-gray">{description}</p>}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {children ?? null}
+      </div>
+    </div>
+  )
 }
-
-const operationalQueues: QueueItem[] = [
-  {
-    title: 'KYC Pendente',
-    count: 12,
-    priority: 'high',
-    sla: '2h restantes',
-    slaStatus: 'warning',
-    page: 'kyc'
-  },
-  {
-    title: 'Aprovações de Serviço',
-    count: 5,
-    priority: 'medium',
-    sla: '4h restantes',
-    slaStatus: 'ok',
-    page: 'approvals'
-  },
-  {
-    title: 'Tickets de Suporte',
-    count: 8,
-    priority: 'medium',
-    sla: '1h restantes',
-    slaStatus: 'critical',
-    page: 'support'
-  },
-  {
-    title: 'Incidentes Ativos',
-    count: 2,
-    priority: 'high',
-    sla: 'SLA vencido',
-    slaStatus: 'critical',
-    page: 'incidents'
-  }
-]
 
 export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
-  const getChangeIcon = (changeType: string) => {
-    switch (changeType) {
-      case 'up':
-        return <TrendingUp className="h-4 w-4 text-green-600" />
-      case 'down':
-        return <TrendingDown className="h-4 w-4 text-red-600" />
-      default:
-        return null
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadStats = async () => {
+    setLoading(true)
+    setError(null)
+    const res = await dashboardService.getStats()
+    setLoading(false)
+    if (res.success && res.data) {
+      setStats(res.data)
+    } else {
+      setError(res.error || 'Erro ao carregar dados')
     }
   }
 
-  const getAlertIcon = (type: string) => {
-    switch (type) {
-      case 'critical':
-        return <XCircle className="h-5 w-5 text-red-500" />
-      case 'warning':
-        return <AlertTriangle className="h-5 w-5 text-yellow-500" />
-      case 'info':
-        return <CheckCircle className="h-5 w-5 text-blue-500" />
-      default:
-        return <AlertCircle className="h-5 w-5 text-gray-500" />
-    }
-  }
+  useEffect(() => {
+    loadStats()
+  }, [])
 
-  const getSLAColor = (status: string) => {
-    switch (status) {
-      case 'ok':
-        return 'text-green-600 bg-green-50'
-      case 'warning':
-        return 'text-yellow-600 bg-yellow-50'
-      case 'critical':
-        return 'text-red-600 bg-red-50'
-      default:
-        return 'text-gray-600 bg-gray-50'
-    }
-  }
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'border-l-red-500'
-      case 'medium':
-        return 'border-l-yellow-500'
-      case 'low':
-        return 'border-l-green-500'
-      default:
-        return 'border-l-gray-500'
-    }
-  }
+  const s = stats
+  const loadingState = loading && !s
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-aumigo-teal text-3xl mb-2">Dashboard Administrativo</h1>
-          <p className="text-aumigo-gray">Visão executiva e operacional da plataforma AuMigoPet</p>
+          <h1 className="text-aumigo-teal text-3xl mb-2 flex items-center gap-2">
+            <BarChart3 className="h-8 w-8" />
+            Dashboard
+          </h1>
+          <p className="text-aumigo-gray">
+            Visão geral do sistema AuMigoPet. Dados brutos; lapidação (ex.: por cidade/estado) em versões futuras.
+          </p>
         </div>
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center space-x-2 px-3 py-1 bg-green-50 rounded-full">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <span className="text-sm text-green-700">Sistema operacional</span>
+        <Button variant="outline" size="sm" onClick={loadStats} disabled={loading} className="shrink-0">
+          {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+          Atualizar
+        </Button>
+      </div>
+
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
+      )}
+
+      {/* 1. Usuários */}
+      <Section
+        title="Usuários"
+        description="Tutores e profissionais na plataforma"
+      >
+        <MetricCard
+          title="Tutores"
+          value={s?.usuarios?.tutores ?? 0}
+          description="Donos de pets"
+          icon={Users}
+          loading={loadingState}
+          onClick={() => onNavigate('users')}
+        />
+        <MetricCard
+          title="Profissionais"
+          value={s?.usuarios?.profissionais ?? 0}
+          description="Prestadores de serviço"
+          icon={UserCog}
+          iconColor="text-aumigo-orange"
+          loading={loadingState}
+          onClick={() => onNavigate('users')}
+        />
+      </Section>
+
+      {/* 2. Empresas e catálogo */}
+      <Section
+        title="Empresas e catálogo"
+        description="Empresas, serviços e itens do catálogo"
+      >
+        <MetricCard
+          title="Empresas"
+          value={s?.empresas ?? 0}
+          description="Empresas cadastradas"
+          icon={Building2}
+          loading={loadingState}
+        />
+        <MetricCard
+          title="Serviços"
+          value={s?.pontosAtendimento ?? 0}
+          description="Serviços cadastrados (ex.: Banho & Tosa)"
+          icon={Store}
+          loading={loadingState}
+        />
+        <MetricCard
+          title="Itens no catálogo"
+          value={s?.servicosCatalogo ?? 0}
+          description="Itens/serviços oferecidos"
+          icon={ListChecks}
+          loading={loadingState}
+        />
+      </Section>
+
+      {/* 3. Pets */}
+      <Section title="Pets" description="Pets cadastrados na plataforma">
+        <MetricCard
+          title="Total de pets"
+          value={s?.pets ?? 0}
+          description="Pets ativos"
+          icon={PawPrint}
+          loading={loadingState}
+        />
+      </Section>
+
+      {/* 4. Agendamentos */}
+      <Section title="Agendamentos" description="Total e por status (futuro: por período)">
+        <MetricCard
+          title="Total de agendamentos"
+          value={s?.agendamentos ?? 0}
+          description="Todos os status"
+          icon={Calendar}
+          loading={loadingState}
+        />
+        {s?.agendamentosPorStatus &&
+          Object.entries(s.agendamentosPorStatus).map(([status, count]) => (
+            <div key={status}>
+              <MetricCard
+                title={BOOKING_STATUS_LABEL[status] ?? status}
+                value={typeof count === 'number' ? count : 0}
+                icon={Calendar}
+                loading={loadingState}
+              />
+            </div>
+          ))}
+      </Section>
+
+      {/* 5. Engajamento */}
+      <Section title="Engajamento" description="Avaliações e favoritos">
+        <MetricCard
+          title="Avaliações"
+          value={s?.avaliacoes ?? 0}
+          description="Reviews no sistema"
+          icon={Star}
+          loading={loadingState}
+        />
+        <MetricCard
+          title="Favoritos"
+          value={s?.favoritos ?? 0}
+          description="Profissionais favoritados"
+          icon={Heart}
+          loading={loadingState}
+        />
+      </Section>
+
+      {/* 6. Operações */}
+      <Section title="Operações" description="Pagamentos, suporte e notificações">
+        <MetricCard
+          title="Pagamentos"
+          value={s?.pagamentos ?? 0}
+          description="Total de transações"
+          icon={CreditCard}
+          loading={loadingState}
+        />
+        <MetricCard
+          title="Tickets"
+          value={s?.tickets ?? 0}
+          description="Tickets de suporte"
+          icon={MessageSquare}
+          loading={loadingState}
+        />
+        <MetricCard
+          title="Notificações"
+          value={s?.notificacoes ?? 0}
+          description="Notificações no sistema"
+          icon={Bell}
+          loading={loadingState}
+        />
+      </Section>
+
+      {/* Ação rápida */}
+      <Card className="border-aumigo-teal/20 bg-aumigo-teal/5">
+        <CardContent className="pt-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <p className="text-sm text-aumigo-gray">
+              Acesse a listagem de tutores e profissionais para detalhes e filtros.
+            </p>
+            <Button
+              variant="default"
+              size="sm"
+              className="bg-aumigo-teal hover:bg-aumigo-teal/90"
+              onClick={() => onNavigate('users')}
+            >
+              Ver tutores e profissionais
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
           </div>
-          <Badge variant="outline" className="text-gray-600">
-            <Clock className="mr-1 h-3 w-3" />
-            Atualizado há 2 min
-          </Badge>
-        </div>
-      </div>
-
-      {/* KPIs Principais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {kpiCards.map((kpi, index) => (
-          <Card 
-            key={index} 
-            className="cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => kpi.clickAction && onNavigate(kpi.clickAction)}
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm text-aumigo-gray">{kpi.title}</CardTitle>
-              <kpi.icon className="h-5 w-5 text-aumigo-teal" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl text-aumigo-teal mb-1">{kpi.value}</div>
-              <div className="flex items-center space-x-1 text-sm">
-                {getChangeIcon(kpi.changeType)}
-                <span className={`${
-                  kpi.changeType === 'up' ? 'text-green-600' : 
-                  kpi.changeType === 'down' ? 'text-red-600' : 'text-gray-600'
-                }`}>
-                  {kpi.change}
-                </span>
-                <span className="text-aumigo-gray">{kpi.description}</span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Alertas Críticos */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-aumigo-teal">
-                <AlertCircle className="h-5 w-5" />
-                Alertas do Sistema
-              </CardTitle>
-              <CardDescription>
-                Situações que requerem atenção imediata
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {alerts.map((alert, index) => (
-                <div key={index} className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg">
-                  {getAlertIcon(alert.type)}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm text-aumigo-teal">{alert.title}</p>
-                      <span className="text-xs text-aumigo-gray">{alert.timestamp}</span>
-                    </div>
-                    <p className="text-sm text-aumigo-gray mb-2">{alert.message}</p>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="text-xs"
-                      onClick={() => onNavigate(alert.actionPage)}
-                    >
-                      {alert.action}
-                      <ArrowRight className="ml-1 h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filas Operacionais */}
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-aumigo-teal">
-                <Activity className="h-5 w-5" />
-                Filas de Triagem
-              </CardTitle>
-              <CardDescription>
-                Itens aguardando processamento
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {operationalQueues.map((queue, index) => (
-                <div 
-                  key={index} 
-                  className={`p-4 border-l-4 ${getPriorityColor(queue.priority)} bg-gray-50 rounded-r-lg cursor-pointer hover:bg-gray-100 transition-colors`}
-                  onClick={() => onNavigate(queue.page)}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm text-aumigo-teal">{queue.title}</h4>
-                    <Badge variant="secondary" className="text-xs">
-                      {queue.count}
-                    </Badge>
-                  </div>
-                  <div className={`text-xs px-2 py-1 rounded ${getSLAColor(queue.slaStatus)}`}>
-                    {queue.sla}
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* Performance Operacional */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-aumigo-teal">
-              <BarChart3 className="h-5 w-5" />
-              SLAs de Operação
-            </CardTitle>
-            <CardDescription>
-              Performance das principais operações nas últimas 24h
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-sm text-aumigo-gray">Triagem KYC</span>
-                <span className="text-sm text-aumigo-teal">87%</span>
-              </div>
-              <Progress value={87} className="h-2" />
-            </div>
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-sm text-aumigo-gray">Aprovação de Serviços</span>
-                <span className="text-sm text-aumigo-teal">95%</span>
-              </div>
-              <Progress value={95} className="h-2" />
-            </div>
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-sm text-aumigo-gray">Suporte a Usuários</span>
-                <span className="text-sm text-aumigo-teal">73%</span>
-              </div>
-              <Progress value={73} className="h-2" />
-            </div>
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-sm text-aumigo-gray">Conciliação Financeira</span>
-                <span className="text-sm text-aumigo-teal">92%</span>
-              </div>
-              <Progress value={92} className="h-2" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-aumigo-teal">
-              <Shield className="h-5 w-5" />
-              Status dos Sistemas
-            </CardTitle>
-            <CardDescription>
-              Saúde dos principais componentes da plataforma
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {[
-              { name: 'API Principal', status: 'ok', uptime: '99.9%' },
-              { name: 'Pagamentos', status: 'ok', uptime: '99.8%' },
-              { name: 'Webhooks', status: 'warning', uptime: '94.2%' },
-              { name: 'Chat/Notificações', status: 'ok', uptime: '99.5%' },
-              { name: 'Upload de Arquivos', status: 'ok', uptime: '98.9%' },
-              { name: 'Banco de Dados', status: 'ok', uptime: '100%' }
-            ].map((system, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className={`w-2 h-2 rounded-full ${
-                    system.status === 'ok' ? 'bg-green-400' : 
-                    system.status === 'warning' ? 'bg-yellow-400' : 'bg-red-400'
-                  }`}></div>
-                  <span className="text-sm text-aumigo-gray">{system.name}</span>
-                </div>
-                <span className="text-sm text-aumigo-teal">{system.uptime}</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

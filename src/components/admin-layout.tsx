@@ -10,51 +10,39 @@ import exampleImage from '../assets/8dfcc005426cdf14f94213dc79b85192818ffd4b.png
 import {
   Search,
   Command,
-  Bell,
   Settings,
   LogOut,
   Shield,
   ChevronDown,
   Menu,
   X,
-  // Operações
   FileCheck,
-  UserCheck,
   Calendar,
   AlertCircle,
-  // Usuários
   Users,
   UserCog,
-  // Catálogo
   Package,
-  Tags,
-  // Financeiro
   CreditCard,
   DollarSign,
   Receipt,
-  TrendingUp,
-  // Qualidade
   Star,
   MessageSquare,
   BarChart3,
-  // Conteúdo
-  FileText,
-  Image,
-  Megaphone,
-  // Sistema
-  Flag,
   Activity,
-  Database,
-  Webhook
+  Webhook,
+  Building2,
+  Store,
 } from 'lucide-react'
+import { NotificationBell } from './notification-bell'
 
 interface AdminUser {
   id: string
   name: string
   email: string
-  role: 'super_admin' | 'operations' | 'support' | 'finance'
+  role: 'ADMIN' | 'operations' | 'support' | 'finance'
   permissions: string[]
-  lastLogin: string
+  lastLogin?: string
+  profilePicture?: string | null
 }
 
 interface AdminLayoutProps {
@@ -76,29 +64,30 @@ interface NavSection {
   }[]
 }
 
+// Menu alinhado ao schema Prisma: entidades e fluxos que existem no sistema
 const navigationSections: NavSection[] = [
   {
     title: 'Operações',
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-      { id: 'kyc', label: 'KYC / Triagem', icon: FileCheck, badge: '12', badgeVariant: 'destructive' },
-      { id: 'approvals', label: 'Aprovações', icon: UserCheck, badge: '5', badgeVariant: 'secondary' },
-      { id: 'bookings', label: 'Agendamentos', icon: Calendar },
-      { id: 'incidents', label: 'Incidentes', icon: AlertCircle, badge: '2', badgeVariant: 'destructive' },
+      { id: 'kyc', label: 'KYC / Triagem', icon: FileCheck },
+      // { id: 'bookings', label: 'Agendamentos', icon: Calendar },
+      { id: 'incidents', label: 'Incidentes', icon: AlertCircle },
     ]
   },
   {
     title: 'Usuários',
     items: [
       { id: 'users', label: 'Tutores & Profissionais', icon: Users },
-      { id: 'rbac', label: 'Papéis & Permissões', icon: UserCog },
+      // { id: 'rbac', label: 'Papéis & Permissões', icon: UserCog },
     ]
   },
   {
-    title: 'Catálogo',
+    title: 'Empresas e catálogo',
     items: [
-      { id: 'services', label: 'Serviços', icon: Package },
-      { id: 'categories', label: 'Categorias', icon: Tags },
+      { id: 'companies', label: 'Empresas', icon: Building2 },
+      // { id: 'service-providers', label: 'Serviços', icon: Store },
+      // { id: 'catalog', label: 'Itens no catálogo', icon: Package },
     ]
   },
   {
@@ -107,34 +96,22 @@ const navigationSections: NavSection[] = [
       { id: 'payments', label: 'Pagamentos', icon: CreditCard },
       { id: 'payouts', label: 'Repasses', icon: DollarSign },
       { id: 'transactions', label: 'Transações', icon: Receipt },
-      { id: 'campaigns', label: 'Cupons & Campanhas', icon: TrendingUp },
     ]
   },
-  {
-    title: 'Qualidade',
-    items: [
-      { id: 'reviews', label: 'Avaliações', icon: Star },
-      { id: 'support', label: 'Suporte', icon: MessageSquare, badge: '8', badgeVariant: 'secondary' },
-      { id: 'analytics', label: 'SLA & NPS', icon: BarChart3 },
-    ]
-  },
-  {
-    title: 'Conteúdo',
-    items: [
-      { id: 'cms', label: 'Páginas', icon: FileText },
-      { id: 'media', label: 'Mídia', icon: Image },
-      { id: 'marketing', label: 'Campanhas', icon: Megaphone },
-    ]
-  },
-  {
-    title: 'Sistema',
-    items: [
-      { id: 'features', label: 'Feature Flags', icon: Flag },
-      { id: 'logs', label: 'Logs & Auditoria', icon: Activity },
-      { id: 'database', label: 'Banco de Dados', icon: Database },
-      { id: 'webhooks', label: 'Integrações', icon: Webhook },
-    ]
-  }
+  // {
+  //   title: 'Qualidade',
+  //   items: [
+  //     { id: 'reviews', label: 'Avaliações', icon: Star },
+  //     { id: 'support', label: 'Suporte', icon: MessageSquare },
+  //   ]
+  // },
+  // {
+  //   title: 'Sistema',
+  //   items: [
+  //     { id: 'webhooks', label: 'Integrações', icon: Webhook },
+  //     { id: 'logs', label: 'Logs & Auditoria', icon: Activity },
+  //   ]
+  // }
 ]
 
 export function AdminLayout({ currentPage, onNavigate, user, onLogout, children }: AdminLayoutProps) {
@@ -143,7 +120,7 @@ export function AdminLayout({ currentPage, onNavigate, user, onLogout, children 
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'super_admin':
+      case 'ADMIN':
         return 'bg-red-100 text-red-800'
       case 'operations':
         return 'bg-blue-100 text-blue-800'
@@ -158,7 +135,7 @@ export function AdminLayout({ currentPage, onNavigate, user, onLogout, children 
 
   const getRoleLabel = (role: string) => {
     switch (role) {
-      case 'super_admin':
+      case 'ADMIN':
         return 'Super Admin'
       case 'operations':
         return 'Operações'
@@ -272,7 +249,7 @@ export function AdminLayout({ currentPage, onNavigate, user, onLogout, children 
               </button>
               
               {/* Busca Global */}
-              <div className="relative w-96 hidden md:block">
+              {/* <div className="relative w-96 hidden md:block">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   type="text"
@@ -286,35 +263,25 @@ export function AdminLayout({ currentPage, onNavigate, user, onLogout, children 
                     ⌘K
                   </Badge>
                 </div>
-              </div>
+              </div> */}
             </div>
 
             {/* Lado direito */}
             <div className="flex items-center space-x-4">
-              {/* Ambiente */}
-              <div className="hidden md:flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-sm text-gray-600">Produção</span>
-              </div>
 
               <Separator orientation="vertical" className="h-6 hidden md:block" />
 
               {/* Notificações */}
-              <Button variant="ghost" size="sm" className="relative">
-                <Bell className="h-5 w-5" />
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
-                  <span className="text-xs text-white">3</span>
-                </div>
-              </Button>
+              <NotificationBell showFullCenter={false} maxPreview={10} />
 
               {/* Perfil do Admin */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center space-x-3 px-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src="" />
+                      <AvatarImage src={user.profilePicture ?? undefined} alt={user.name} />
                       <AvatarFallback className="bg-red-100 text-red-700">
-                        {user.name.charAt(0)}
+                        {user.name?.charAt(0) ?? 'A'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="hidden md:block text-left">
@@ -334,14 +301,15 @@ export function AdminLayout({ currentPage, onNavigate, user, onLogout, children 
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onNavigate('settings')}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Configurações</span>
                   </DropdownMenuItem>
+                  {/* 
                   <DropdownMenuItem>
                     <Activity className="mr-2 h-4 w-4" />
                     <span>Logs da Sessão</span>
-                  </DropdownMenuItem>
+                  </DropdownMenuItem> */}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={onLogout} className="text-red-600">
                     <LogOut className="mr-2 h-4 w-4" />

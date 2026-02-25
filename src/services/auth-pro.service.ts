@@ -92,7 +92,7 @@ export class AuthProService {
     this.setError(null);
 
     try {
-      const result = await api.post("/auth/login/admin", {
+      const result = await api.post("/auth/login/pro", {
         login,
         password,
       });

@@ -47,6 +47,7 @@ import {
 import { toast } from 'sonner'
 import { usersService } from '../services/users.service'
 import { filesService } from '../services/files.service'
+import { authService } from '../services/auth.service'
 
 const OUTPUT_SIZE = 512
 
@@ -143,6 +144,7 @@ interface PrivacySettings {
 export function ProSettings() {
   const [activeTab, setActiveTab] = useState('profile')
   const [showPassword, setShowPassword] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({ current: '', new: '', confirm: '' })
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
@@ -376,7 +378,7 @@ export function ProSettings() {
     try {
       // Atualizar perfil removendo a URL da imagem
       const updateResult = await usersService.updateMyProfile({
-        profilePicture: undefined
+        profilePicture: null
       })
 
       toast.dismiss(loadingToast)
@@ -584,6 +586,33 @@ export function ProSettings() {
     }, 1000)
   }
 
+  const handleChangePassword = async () => {
+    if (!passwordForm.current || !passwordForm.new || !passwordForm.confirm) {
+      toast.error('Preencha todos os campos de senha')
+      return
+    }
+    if (passwordForm.new !== passwordForm.confirm) {
+      toast.error('Nova senha e confirmação não conferem')
+      return
+    }
+    if (passwordForm.new.length < 6) {
+      toast.error('A nova senha deve ter no mínimo 6 caracteres')
+      return
+    }
+    const result = await authService.changePassword(
+      passwordForm.current,
+      passwordForm.new
+    )
+    if (result.success) {
+      toast.success('Senha alterada com sucesso', {
+        description: 'Sua nova senha já está ativa. Use-a no próximo login.'
+      })
+      setPasswordForm({ current: '', new: '', confirm: '' })
+    } else {
+      toast.error(result.error ?? 'Erro ao alterar senha')
+    }
+  }
+
   const handleDeleteAccount = () => {
     if (confirm('Tem certeza que deseja excluir sua conta? Esta ação não pode ser desfeita.')) {
       toast.loading('Processando exclusão de conta...')
@@ -683,11 +712,15 @@ export function ProSettings() {
       {/* Content */}
       <div className="flex-1 p-4 sm:p-6 overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 mb-4 sm:mb-6">
-            {/* <TabsTrigger value="profile" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-2 max-w-sm mb-4 sm:mb-6">
+            <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Perfil
-            </TabsTrigger> */}
+            </TabsTrigger>
+            <TabsTrigger value="security" className="flex items-center gap-2">
+              <Lock className="h-4 w-4" />
+              Segurança
+            </TabsTrigger>
             {/* <TabsTrigger value="notifications" className="flex items-center gap-2">
               <Bell className="h-4 w-4" />
               Notificações
@@ -703,8 +736,8 @@ export function ProSettings() {
             <TabsTrigger value="privacy" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Privacidade
-            </TabsTrigger> */}
-            {/* <TabsTrigger value="general" className="flex items-center gap-2">
+            </TabsTrigger>
+            <TabsTrigger value="general" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Geral
             </TabsTrigger> */}
@@ -1381,63 +1414,6 @@ export function ProSettings() {
                     </div>
                   </div>
 
-                  {/* Password Change */}
-                  <div className="space-y-4">
-                    <h4 className="font-medium flex items-center gap-2">
-                      <Lock className="h-4 w-4" />
-                      Alterar Senha
-                    </h4>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Senha Atual</Label>
-                        <div className="relative">
-                          <Input
-                            type={showPassword ? "text" : "password"}
-                            placeholder="Digite a senha atual"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-0 top-0 h-full px-3"
-                            onClick={() => setShowPassword(!showPassword)}
-                          >
-                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Nova Senha</Label>
-                        <Input
-                          type="password"
-                          placeholder="Digite a nova senha"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Confirmar Nova Senha</Label>
-                        <Input
-                          type="password"
-                          placeholder="Confirme a nova senha"
-                        />
-                      </div>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => {
-                        toast.loading('Alterando senha...')
-                        setTimeout(() => {
-                          toast.dismiss()
-                          toast.success('🔐 Senha alterada com sucesso!', {
-                            description: 'Sua nova senha já está ativa. Use-a no próximo login.'
-                          })
-                        }, 1500)
-                      }}
-                    >
-                      Alterar Senha
-                    </Button>
-                  </div>
-
                   <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-4">
                     <Button 
                       variant="outline" 
@@ -1460,6 +1436,71 @@ export function ProSettings() {
                       Salvar Configurações
                     </Button>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Security Tab */}
+            <TabsContent value="security" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Lock className="h-5 w-5 text-aumigo-orange" />
+                    Alterar senha
+                  </CardTitle>
+                  <CardDescription>
+                    Use uma senha forte e altere periodicamente
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Senha atual</Label>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Digite a senha atual"
+                        value={passwordForm.current}
+                        onChange={(e) =>
+                          setPasswordForm({ ...passwordForm, current: e.target.value })
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nova senha</Label>
+                    <Input
+                      type="password"
+                      placeholder="Mínimo 6 caracteres"
+                      value={passwordForm.new}
+                      onChange={(e) =>
+                        setPasswordForm({ ...passwordForm, new: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Confirmar nova senha</Label>
+                    <Input
+                      type="password"
+                      placeholder="Repita a nova senha"
+                      value={passwordForm.confirm}
+                      onChange={(e) =>
+                        setPasswordForm({ ...passwordForm, confirm: e.target.value })
+                      }
+                    />
+                  </div>
+                  <Button variant="outline" onClick={handleChangePassword}>
+                    <Lock className="h-4 w-4 mr-2" />
+                    Alterar senha
+                  </Button>
                 </CardContent>
               </Card>
             </TabsContent>

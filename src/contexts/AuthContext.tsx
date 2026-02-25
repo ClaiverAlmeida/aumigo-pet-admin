@@ -25,6 +25,7 @@ interface AdminUser {
   role: 'super_admin' | 'operations' | 'support' | 'finance';
   permissions?: string[];
   lastLogin?: string;
+  profilePicture?: string | null;
 }
 
 interface AuthContextType {
@@ -32,6 +33,7 @@ interface AuthContextType {
   adminUser: AdminUser | null;
   accessToken: string | null;
   loading: boolean;
+  refreshAdminUser: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUpPro: (data: {
     name: string;
@@ -102,6 +104,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   };
 
+  // Carrega dados do admin a partir da API (como no Pro), para nome/foto sincronizarem
+  const loadAdminProfile = async (): Promise<AdminUser | null> => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return null;
+    try {
+      const result = await usersService.getMyProfile();
+      if (result.success && result.data) {
+        const profileData = result.data;
+        const tokenUser = getUserFromToken(token);
+        const adminData: AdminUser = {
+          id: profileData.id || tokenUser?.sub || '',
+          email: profileData.email || tokenUser?.email || '',
+          name: profileData.name || tokenUser?.name || '',
+          role: (tokenUser?.role as AdminUser['role']) || 'super_admin',
+          permissions: tokenUser?.permissions || [],
+          lastLogin: new Date().toISOString(),
+          profilePicture: profileData.profilePicture ?? null,
+        };
+        setAdminUser(adminData);
+        localStorage.setItem('aumigopet_admin', JSON.stringify(adminData));
+        return adminData;
+      }
+    } catch (error) {
+      console.log('Error loading admin profile:', error);
+    }
+    return null;
+  };
+
   // Check for existing session on mount - Seguindo EXATAMENTE o padrão do app
   useEffect(() => {
     const checkSession = async () => {
@@ -129,10 +159,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        // Verificar admin
+        // Verificar admin: carregar da API (como no Pro) para nome/foto sincronizarem
         const storedAdminUser = localStorage.getItem('aumigopet_admin');
-        if (storedAdminUser) {
-          setAdminUser(JSON.parse(storedAdminUser));
+        const storedAdminToken = localStorage.getItem('auth_token');
+        if (storedAdminUser && storedAdminToken) {
+          const parsed = JSON.parse(storedAdminUser);
+          setAdminUser(parsed);
+          await loadAdminProfile();
         }
       } catch (error) {
         console.log('Error checking session:', error);
@@ -170,7 +203,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         setUser(initialUserData);
         setAccessToken(result.data.access_token);
-        
+        // Uma sessão por vez: limpar sessão admin ao logar como pro
+        setAdminUser(null);
+        localStorage.removeItem('aumigopet_admin');
+
         // Store in localStorage - Seguindo EXATAMENTE o padrão do app
         localStorage.setItem('aumigopet_user', JSON.stringify(initialUserData));
         localStorage.setItem('refresh_token', result.data.refresh_token);
@@ -267,11 +303,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         setAdminUser(adminData);
         setAccessToken(result.data.access_token);
+        // Uma sessão por vez: limpar sessão pro ao logar como admin
+        setUser(null);
+        localStorage.removeItem('aumigopet_user');
 
         // Store in localStorage - Seguindo padrão do app
         localStorage.setItem('aumigopet_admin', JSON.stringify(adminData));
         localStorage.setItem('refresh_token', result.data.refresh_token);
         localStorage.setItem('auth_token', result.data.access_token);
+
+        await loadAdminProfile();
 
         return { success: true };
       } else {
@@ -346,6 +387,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     adminUser,
     accessToken,
     loading,
+    refreshAdminUser: async () => { await loadAdminProfile(); },
     signIn,
     signUpPro,
     signInAdmin,
