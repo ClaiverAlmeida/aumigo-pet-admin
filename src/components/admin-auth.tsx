@@ -146,7 +146,7 @@ export function AdminAuth({ onLogin }: AdminAuthProps) {
                     <Input
                       id="forgot-email"
                       type="email"
-                      placeholder="admin@aumigopet.com"
+                      placeholder="Adicione seu e-mail administrativo"
                       className="pl-10 border-gray-300 focus:border-red-500 h-12"
                       value={forgotData.email}
                       onChange={(e) => setForgotData({ ...forgotData, email: e.target.value })}
@@ -273,7 +273,7 @@ export function AdminAuth({ onLogin }: AdminAuthProps) {
                       <Input
                         id="admin-email"
                         type="email"
-                        placeholder="admin@aumigopet.com"
+                        placeholder="Adicione seu e-mail administrativo"
                         className="pl-10 border-gray-300 focus:border-red-500 h-12"
                         value={loginData.email}
                         onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
