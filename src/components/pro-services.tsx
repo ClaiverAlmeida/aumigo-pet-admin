@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu'
 import { Alert, AlertDescription } from './ui/alert'
 import { ImageWithFallback } from './figma/ImageWithFallback'
+import { PhotoCropUpload } from './PhotoCropUpload'
 import { servicesService, Service as BackendService } from '../services/services.service'
 import { serviceProvidersService, ServiceProvider as BackendProvider } from '../services/service-providers.service'
 import { companiesService, Company } from '../services/companies.service'
@@ -1021,11 +1022,6 @@ function ServiceDialog({ service, providers, onSave, onClose }: ServiceDialogPro
     imageUrl: service?.imageUrl || ''
   })
   
-  const [imagePreview, setImagePreview] = useState<string>(service?.imageUrl || '')
-  const [imageError, setImageError] = useState<string>('')
-  const [isUploadingImage, setIsUploadingImage] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
   // Atualizar formData quando o service mudar (edição)
   useEffect(() => {
     if (service) {
@@ -1038,9 +1034,7 @@ function ServiceDialog({ service, providers, onSave, onClose }: ServiceDialogPro
         active: service.active ?? true,
         imageUrl: service.imageUrl || ''
       })
-      setImagePreview(service.imageUrl || '')
     } else {
-      // Limpar formulário quando criar novo
       setFormData({
         providerId: providers.length > 0 ? providers[0].id : '',
         title: '',
@@ -1050,77 +1044,8 @@ function ServiceDialog({ service, providers, onSave, onClose }: ServiceDialogPro
         active: true,
         imageUrl: ''
       })
-      setImagePreview('')
     }
   }, [service, providers])
-
-  const validateImageDimensions = (file: File): Promise<boolean> => {
-    return new Promise((resolve) => {
-      const img = new Image()
-      img.onload = () => {
-        const isValid = img.width === 800 && img.height === 800
-        resolve(isValid)
-      }
-      img.onerror = () => resolve(false)
-      img.src = URL.createObjectURL(file)
-    })
-  }
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    // Verificar tipo de arquivo
-    if (!file.type.startsWith('image/')) {
-      setImageError('Por favor, selecione um arquivo de imagem válido.')
-      return
-    }
-
-    // Verificar tamanho do arquivo (máximo 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setImageError('A imagem deve ter no máximo 5MB.')
-      return
-    }
-
-    setIsUploadingImage(true)
-    setImageError('')
-
-    try {
-      // Validar dimensões
-      const isValidSize = await validateImageDimensions(file)
-      if (!isValidSize) {
-        setImageError('A imagem deve ter exatamente 800x800 pixels.')
-        setIsUploadingImage(false)
-        return
-      }
-
-      // Converter para base64 para preview (em produção, seria enviado para um servidor)
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const result = event.target?.result as string
-        setImagePreview(result)
-        setFormData({ ...formData, imageUrl: result })
-        setIsUploadingImage(false)
-      }
-      reader.onerror = () => {
-        setImageError('Erro ao processar a imagem.')
-        setIsUploadingImage(false)
-      }
-      reader.readAsDataURL(file)
-    } catch (error) {
-      setImageError('Erro ao validar a imagem.')
-      setIsUploadingImage(false)
-    }
-  }
-
-  const removeImage = () => {
-    setImagePreview('')
-    setFormData({ ...formData, imageUrl: '' })
-    setImageError('')
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -1203,80 +1128,26 @@ function ServiceDialog({ service, providers, onSave, onClose }: ServiceDialogPro
           />
         </div>
 
-        {/* Upload de Imagem */}
-        <div className="space-y-4">
-          <Label>Imagem do Item</Label>
-          <p className="text-sm text-muted-foreground">
-            Adicione uma imagem representativa do seu item (800x800 pixels, máximo 5MB)
-          </p>
-          
-          {imagePreview ? (
-            <div className="relative">
-              <div className="w-32 h-32 rounded-lg overflow-hidden border-2 border-dashed border-border">
-                <img 
-                  src={imagePreview} 
-                  alt="Preview do item" 
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
-                onClick={removeImage}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center w-32 h-32 border-2 border-dashed border-border rounded-lg hover:border-aumigo-orange transition-colors">
-              <div className="text-center">
-                <ImageIcon className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploadingImage}
-                  className="text-xs"
-                >
-                  {isUploadingImage ? 'Carregando...' : 'Selecionar'}
-                </Button>
-              </div>
-            </div>
-          )}
-          
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="hidden"
-          />
-          
-          {imageError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{imageError}</AlertDescription>
-            </Alert>
-          )}
-          
-          {imagePreview && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploadingImage}
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              {isUploadingImage ? 'Carregando...' : 'Alterar Imagem'}
-            </Button>
-          )}
-        </div>
+      {/* Foto do serviço — mesmo componente do app (PetForm) */}
+        <PhotoCropUpload
+          value={formData.imageUrl}
+          onUploaded={(url) => setFormData((prev) => ({ ...prev, imageUrl: url }))}
+          onRemove={() => setFormData((prev) => ({ ...prev, imageUrl: '' }))}
+          uploadType="SERVICE_IMAGE"
+          uploadDescription="Foto do serviço"
+          loadingMessage="Enviando foto do serviço..."
+          successMessage="Foto do serviço adicionada!"
+          modalTitle="Cortar foto do serviço"
+          modalSubtitle="Ajuste a área de corte. A foto será quadrada. Arraste para mover e use o zoom."
+          confirmButtonText="Cortar e usar"
+          sectionTitle="Foto do serviço"
+          sectionDescription="Imagem do produto/serviço. Máximo 5MB."
+          fallbackLabel="?"
+          variant="product"
+          defaultFileName="service-photo.jpg"
+        />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="price">Preço (R$)</Label>
             <Input

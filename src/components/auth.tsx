@@ -502,20 +502,22 @@ export function Auth({ onLogin }: AuthProps) {
                   setError('') // Limpar erro ao trocar de aba
                   if (value === 'signup') resetSignupStep()
                 }}>
-                  <TabsList className="grid w-full grid-cols-2 mb-8 h-12">
-                    <TabsTrigger 
-                      value="login"
-                      className="data-[state=active]:bg-aumigo-orange data-[state=active]:text-white"
-                    >
-                      Entrar
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="signup"
-                      className="data-[state=active]:bg-aumigo-orange data-[state=active]:text-white"
-                    >
-                      Cadastrar
-                    </TabsTrigger>
-                  </TabsList>
+                  {!(currentTab === 'signup' && step === 3) && (
+                    <TabsList className="grid w-full grid-cols-2 mb-8 h-12">
+                      <TabsTrigger 
+                        value="login"
+                        className="data-[state=active]:bg-aumigo-orange data-[state=active]:text-white"
+                      >
+                        Entrar
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="signup"
+                        className="data-[state=active]:bg-aumigo-orange data-[state=active]:text-white"
+                      >
+                        Cadastrar
+                      </TabsTrigger>
+                    </TabsList>
+                  )}
 
                   {/* Login Tab */}
                   <TabsContent value="login" className="space-y-6">
@@ -1085,9 +1087,9 @@ export function Auth({ onLogin }: AuthProps) {
                             </div>
                           </div>
 
-                          <Alert className="border-aumigo-blue/30 bg-aumigo-blue/10">
-                            <CheckCircle className="h-4 w-4 text-aumigo-blue" />
-                            <AlertDescription className="text-aumigo-teal">
+                          <Alert className="border-aumigo-orange bg-aumigo-orange">
+                            <CheckCircle className="h-4 w-4 text-white" />
+                            <AlertDescription className="text-white">
                               Quase pronto! Só falta aceitar os termos para finalizar seu cadastro.
                             </AlertDescription>
                           </Alert>
@@ -1213,7 +1215,7 @@ export function Auth({ onLogin }: AuthProps) {
                 )}
 
                 {/* Divider and alternatives */}
-                {(currentTab === 'login' || currentTab === 'signup') && (
+                {(currentTab === 'login' || (currentTab === 'signup' && step !== 3)) && (
                   <>
                     <Separator className="my-6" />
                     
