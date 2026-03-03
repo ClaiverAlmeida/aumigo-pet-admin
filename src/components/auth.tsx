@@ -931,7 +931,7 @@ export function Auth({ onLogin }: AuthProps) {
                                 id="zipCode"
                                 type="text"
                                 placeholder="00000-000"
-                                maxLength={9}
+                                maxLength={10}
                                 className="pl-10 pr-10 border-aumigo-gray/30 focus:border-aumigo-orange"
                                 value={signupData.zipCode}
                                 onChange={(e) => {
