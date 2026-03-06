@@ -43,11 +43,13 @@ import {
   CheckCircle,
   Save,
   X,
+  Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { usersService } from '../services/users.service'
 import { filesService } from '../services/files.service'
 import { authService } from '../services/auth.service'
+import { companiesService } from '../services/companies.service'
 
 const OUTPUT_SIZE = 512
 
@@ -125,13 +127,27 @@ interface AvailabilitySettings {
   }
 }
 
-interface PaymentSettings {
-  bankAccount: string
-  pixKey: string
-  commission: number
-  autoWithdraw: boolean
-  withdrawDay: number
+/** Dados da empresa para recebimento de repasses (PIX ou conta bancária) */
+interface PayoutSettings {
+  usePix: boolean
+  payoutPixKey: string
+  payoutPixKeyType: string
+  payoutBankCode: string
+  payoutBankAgency: string
+  payoutBankAccount: string
+  payoutBankAccountDigit: string
+  payoutBankOwnerName: string
+  payoutBankCpfCnpj: string
+  payoutBankAccountType: string
 }
+
+const PIX_KEY_TYPES = [
+  { value: 'CPF', label: 'CPF' },
+  { value: 'CNPJ', label: 'CNPJ' },
+  { value: 'EMAIL', label: 'E-mail' },
+  { value: 'PHONE', label: 'Telefone' },
+  { value: 'RANDOM', label: 'Chave aleatória' },
+]
 
 interface PrivacySettings {
   profileVisibility: 'public' | 'clients-only' | 'private'
@@ -203,13 +219,21 @@ export function ProSettings() {
     }
   })
 
-  const [payment, setPayment] = useState<PaymentSettings>({
-    bankAccount: '**** **** **** 1234',
-    pixKey: 'maria.souza@email.com',
-    commission: 15,
-    autoWithdraw: true,
-    withdrawDay: 1
+  const [payoutSettings, setPayoutSettings] = useState<PayoutSettings>({
+    usePix: true,
+    payoutPixKey: '',
+    payoutPixKeyType: 'CPF',
+    payoutBankCode: '',
+    payoutBankAgency: '',
+    payoutBankAccount: '',
+    payoutBankAccountDigit: '',
+    payoutBankOwnerName: '',
+    payoutBankCpfCnpj: '',
+    payoutBankAccountType: 'CONTA_CORRENTE',
   })
+  const [payoutSettingsLoading, setPayoutSettingsLoading] = useState(false)
+  const [payoutSettingsSaving, setPayoutSettingsSaving] = useState(false)
+  const [hasCompany, setHasCompany] = useState<boolean | null>(null)
 
   const [privacy, setPrivacy] = useState<PrivacySettings>({
     profileVisibility: 'public',
@@ -554,25 +578,88 @@ export function ProSettings() {
     }, 1200)
   }
 
-  const handleSavePayment = () => {
-    // Simulação de validação
-    if (!payment.bankAccount || payment.bankAccount.includes('****')) {
-      toast.error('Dados bancários incompletos!')
-      return
-    }
-    if (!payment.pixKey.trim()) {
-      toast.error('Chave PIX é obrigatória!')
-      return
-    }
+  // Carregar dados da empresa (repasse) quando abrir a aba Pagamento
+  useEffect(() => {
+    if (activeTab !== 'payment') return
+    let cancelled = false
+    setPayoutSettingsLoading(true)
+    companiesService.getMyCompany().then((res) => {
+      if (cancelled) return
+      setPayoutSettingsLoading(false)
+      if (res.success && res.data) {
+        const c = res.data
+        setHasCompany(true)
+        const hasPix = Boolean(c.payoutPixKey?.trim() && c.payoutPixKeyType)
+        setPayoutSettings({
+          usePix: hasPix || !(c.payoutBankCode && c.payoutBankAccount),
+          payoutPixKey: c.payoutPixKey ?? '',
+          payoutPixKeyType: c.payoutPixKeyType ?? 'CPF',
+          payoutBankCode: c.payoutBankCode ?? '',
+          payoutBankAgency: c.payoutBankAgency ?? '',
+          payoutBankAccount: c.payoutBankAccount ?? '',
+          payoutBankAccountDigit: c.payoutBankAccountDigit ?? '',
+          payoutBankOwnerName: c.payoutBankOwnerName ?? '',
+          payoutBankCpfCnpj: c.payoutBankCpfCnpj ?? '',
+          payoutBankAccountType: c.payoutBankAccountType ?? 'CONTA_CORRENTE',
+        })
+      } else {
+        setHasCompany(false)
+      }
+    })
+    return () => { cancelled = true }
+  }, [activeTab])
 
-    toast.loading('Verificando e salvando dados de pagamento...')
-    
-    setTimeout(() => {
-      toast.dismiss()
-      toast.success('💳 Configurações de pagamento atualizadas!', {
-        description: `Taxa: ${payment.commission}% • Saque automático: ${payment.autoWithdraw ? 'Ativado' : 'Desativado'}`
+  const handleSavePayoutSettings = async () => {
+    if (payoutSettings.usePix) {
+      if (!payoutSettings.payoutPixKey.trim()) {
+        toast.error('Informe a chave PIX.')
+        return
+      }
+      if (!payoutSettings.payoutPixKeyType) {
+        toast.error('Selecione o tipo da chave PIX.')
+        return
+      }
+    } else {
+      if (!payoutSettings.payoutBankCode?.trim() || !payoutSettings.payoutBankAgency?.trim() ||
+          !payoutSettings.payoutBankAccount?.trim() || !payoutSettings.payoutBankOwnerName?.trim() ||
+          !payoutSettings.payoutBankCpfCnpj?.trim()) {
+        toast.error('Preencha todos os dados da conta bancária.')
+        return
+      }
+    }
+    setPayoutSettingsSaving(true)
+    const payload: Record<string, string> = payoutSettings.usePix
+      ? {
+          payoutPixKey: payoutSettings.payoutPixKey.trim(),
+          payoutPixKeyType: payoutSettings.payoutPixKeyType,
+          payoutBankCode: '',
+          payoutBankAgency: '',
+          payoutBankAccount: '',
+          payoutBankAccountDigit: '',
+          payoutBankOwnerName: '',
+          payoutBankCpfCnpj: '',
+          payoutBankAccountType: '',
+        }
+      : {
+          payoutPixKey: '',
+          payoutPixKeyType: '',
+          payoutBankCode: payoutSettings.payoutBankCode.trim(),
+          payoutBankAgency: payoutSettings.payoutBankAgency.trim(),
+          payoutBankAccount: payoutSettings.payoutBankAccount.trim(),
+          payoutBankAccountDigit: payoutSettings.payoutBankAccountDigit.trim(),
+          payoutBankOwnerName: payoutSettings.payoutBankOwnerName.trim(),
+          payoutBankCpfCnpj: payoutSettings.payoutBankCpfCnpj.replace(/\D/g, ''),
+          payoutBankAccountType: payoutSettings.payoutBankAccountType,
+        }
+    const res = await companiesService.updateMyCompany(payload)
+    setPayoutSettingsSaving(false)
+    if (res.success) {
+      toast.success('Dados para repasse salvos!', {
+        description: 'Quando você solicitar saque, a administração poderá realizar o pagamento via PIX ou TED usando estes dados.',
       })
-    }, 2000)
+    } else {
+      toast.error(res.error ?? 'Erro ao salvar. Tente novamente.')
+    }
   }
 
   const handleSavePrivacy = () => {
@@ -712,28 +799,21 @@ export function ProSettings() {
       {/* Content */}
       <div className="flex-1 p-4 sm:p-6 overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-          <TabsList className="grid w-full grid-cols-2 max-w-sm mb-4 sm:mb-6">
-            <TabsTrigger value="profile" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
+          <TabsList className="grid w-full grid-cols-3 max-w-md mb-4 sm:mb-6 h-auto p-1 gap-0">
+            <TabsTrigger value="profile" className="flex items-center justify-center gap-2 py-2.5 data-[state=active]:bg-muted data-[state=inactive]:bg-transparent">
+              <User className="h-4 w-4 shrink-0" />
               Perfil
             </TabsTrigger>
-            <TabsTrigger value="security" className="flex items-center gap-2">
-              <Lock className="h-4 w-4" />
+            <TabsTrigger value="security" className="flex items-center justify-center gap-2 py-2.5 data-[state=active]:bg-muted data-[state=inactive]:bg-transparent">
+              <Lock className="h-4 w-4 shrink-0" />
               Segurança
             </TabsTrigger>
-            {/* <TabsTrigger value="notifications" className="flex items-center gap-2">
-              <Bell className="h-4 w-4" />
-              Notificações
-            </TabsTrigger>
-            <TabsTrigger value="availability" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Agenda
-            </TabsTrigger>
-            <TabsTrigger value="payment" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
+            {/* <TabsTrigger value="notifications" ... /> <TabsTrigger value="availability" ... /> */}
+            <TabsTrigger value="payment" className="flex items-center justify-center gap-2 py-2.5 data-[state=active]:bg-muted data-[state=inactive]:bg-transparent">
+              <CreditCard className="h-4 w-4 shrink-0" />
               Pagamento
             </TabsTrigger>
-            <TabsTrigger value="privacy" className="flex items-center gap-2">
+            {/* <TabsTrigger value="privacy" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Privacidade
             </TabsTrigger>
@@ -1218,116 +1298,178 @@ export function ProSettings() {
               </Card>
             </TabsContent>
 
-            {/* Payment Tab */}
+            {/* Payment Tab — Dados para recebimento de repasses (PIX ou TED) */}
             <TabsContent value="payment" className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <CreditCard className="h-5 w-5 text-aumigo-orange" />
-                    Configurações de Pagamento
+                    Dados para recebimento de repasses
                   </CardTitle>
                   <CardDescription>
-                    Gerencie suas informações bancárias e preferências de recebimento
+                    Informe PIX ou conta bancária para receber os valores quando a administração realizar o pagamento do seu saque. Esses dados são usados apenas para repasses da plataforma AumigoPet.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Bank Account */}
-                  <div className="space-y-4">
-                    <h4 className="font-medium flex items-center gap-2">
-                      <DollarSign className="h-4 w-4" />
-                      Dados Bancários
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Conta Bancária</Label>
-                        <Input
-                          value={payment.bankAccount}
-                          onChange={(e) => setPayment({...payment, bankAccount: e.target.value})}
-                          placeholder="Banco - Agência - Conta"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Chave PIX</Label>
-                        <Input
-                          value={payment.pixKey}
-                          onChange={(e) => setPayment({...payment, pixKey: e.target.value})}
-                          placeholder="CPF, email ou chave aleatória"
-                        />
-                      </div>
+                  {payoutSettingsLoading ? (
+                    <div className="flex items-center justify-center py-12 text-aumigo-teal">
+                      <Loader2 className="h-8 w-8 animate-spin" />
                     </div>
-                  </div>
-
-                  <Separator />
-
-                  {/* Commission & Withdrawal */}
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Comissão e Saques</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="p-4 border border-border/50 rounded-lg bg-muted/30">
-                        <div className="text-sm text-muted-foreground mb-1">Taxa da plataforma</div>
-                        <div className="text-2xl font-bold text-aumigo-orange">{payment.commission}%</div>
-                        <div className="text-xs text-muted-foreground">Por transação</div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Dia do saque automático</Label>
-                        <Select value={payment.withdrawDay.toString()} onValueChange={(value) => 
-                          setPayment({...payment, withdrawDay: parseInt(value)})}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">Todo dia 1</SelectItem>
-                            <SelectItem value="5">Todo dia 5</SelectItem>
-                            <SelectItem value="10">Todo dia 10</SelectItem>
-                            <SelectItem value="15">Todo dia 15</SelectItem>
-                            <SelectItem value="30">Todo dia 30</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                  ) : hasCompany === false ? (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                      Você não possui empresa vinculada. Entre em contato com o suporte para configurar.
                     </div>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 border border-border/50 rounded-lg">
-                    <div>
-                      <div className="font-medium">Saque automático</div>
-                      <div className="text-sm text-muted-foreground">
-                        Transferir automaticamente os valores recebidos
+                  ) : (
+                    <>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Button
+                          type="button"
+                          variant={payoutSettings.usePix ? 'default' : 'outline'}
+                          size="sm"
+                          className={payoutSettings.usePix ? 'bg-aumigo-teal hover:bg-aumigo-teal/90' : ''}
+                          onClick={() => setPayoutSettings((p) => ({ ...p, usePix: true }))}
+                        >
+                          Receber via PIX
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={!payoutSettings.usePix ? 'default' : 'outline'}
+                          size="sm"
+                          className={!payoutSettings.usePix ? 'bg-aumigo-teal hover:bg-aumigo-teal/90' : ''}
+                          onClick={() => setPayoutSettings((p) => ({ ...p, usePix: false }))}
+                        >
+                          Receber via TED (conta bancária)
+                        </Button>
                       </div>
-                    </div>
-                    <Switch
-                      checked={payment.autoWithdraw}
-                      onCheckedChange={(checked) => 
-                        setPayment({...payment, autoWithdraw: checked})}
-                    />
-                  </div>
 
-                  <div className="bg-aumigo-blue/10 border border-aumigo-blue/20 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-aumigo-blue flex-shrink-0 mt-0.5" />
-                      <div>
-                        <h5 className="font-medium text-aumigo-blue mb-1">Conta Verificada</h5>
-                        <p className="text-sm text-aumigo-blue/80">
-                          Sua conta bancária foi verificada com sucesso. Você pode receber pagamentos normalmente.
-                        </p>
+                      {payoutSettings.usePix ? (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Tipo da chave PIX</Label>
+                            <Select
+                              value={payoutSettings.payoutPixKeyType}
+                              onValueChange={(v) => setPayoutSettings((p) => ({ ...p, payoutPixKeyType: v }))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {PIX_KEY_TYPES.map((opt) => (
+                                  <SelectItem key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Chave PIX</Label>
+                            <Input
+                              value={payoutSettings.payoutPixKey}
+                              onChange={(e) => setPayoutSettings((p) => ({ ...p, payoutPixKey: e.target.value }))}
+                              placeholder={
+                                payoutSettings.payoutPixKeyType === 'CPF' || payoutSettings.payoutPixKeyType === 'CNPJ'
+                                  ? 'Apenas números'
+                                  : payoutSettings.payoutPixKeyType === 'PHONE'
+                                    ? '11 dígitos com DDD'
+                                    : 'Sua chave PIX'
+                              }
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Código do banco</Label>
+                            <Input
+                              value={payoutSettings.payoutBankCode}
+                              onChange={(e) => setPayoutSettings((p) => ({ ...p, payoutBankCode: e.target.value }))}
+                              placeholder="Ex: 237"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Agência</Label>
+                            <Input
+                              value={payoutSettings.payoutBankAgency}
+                              onChange={(e) => setPayoutSettings((p) => ({ ...p, payoutBankAgency: e.target.value }))}
+                              placeholder="Número da agência"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Conta</Label>
+                            <Input
+                              value={payoutSettings.payoutBankAccount}
+                              onChange={(e) => setPayoutSettings((p) => ({ ...p, payoutBankAccount: e.target.value }))}
+                              placeholder="Número da conta"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Dígito</Label>
+                            <Input
+                              value={payoutSettings.payoutBankAccountDigit}
+                              onChange={(e) => setPayoutSettings((p) => ({ ...p, payoutBankAccountDigit: e.target.value }))}
+                              placeholder="Dígito"
+                            />
+                          </div>
+                          <div className="space-y-2 sm:col-span-2">
+                            <Label>Titular da conta</Label>
+                            <Input
+                              value={payoutSettings.payoutBankOwnerName}
+                              onChange={(e) => setPayoutSettings((p) => ({ ...p, payoutBankOwnerName: e.target.value }))}
+                              placeholder="Nome completo do titular"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>CPF ou CNPJ do titular</Label>
+                            <Input
+                              value={payoutSettings.payoutBankCpfCnpj}
+                              onChange={(e) => setPayoutSettings((p) => ({ ...p, payoutBankCpfCnpj: e.target.value }))}
+                              placeholder="Apenas números"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Tipo de conta</Label>
+                            <Select
+                              value={payoutSettings.payoutBankAccountType}
+                              onValueChange={(v) => setPayoutSettings((p) => ({ ...p, payoutBankAccountType: v }))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="CONTA_CORRENTE">Conta corrente</SelectItem>
+                                <SelectItem value="CONTA_POUPANCA">Conta poupança</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="bg-aumigo-blue/10 border border-aumigo-blue/20 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                          <CheckCircle className="h-5 w-5 text-aumigo-blue flex-shrink-0 mt-0.5" />
+                          <div className="text-sm text-aumigo-blue/90">
+                            Após solicitar saque na aba Financeiro, a administração poderá realizar o pagamento usando estes dados (PIX ou TED via plataforma).
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
 
-                  <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-4">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {
-                        toast.info('🔄 Dados bancários mantidos por segurança')
-                      }}
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      Cancelar
-                    </Button>
-                    <Button onClick={handleSavePayment} className="bg-aumigo-orange hover:bg-aumigo-orange/90">
-                      <Save className="h-4 w-4 mr-2" />
-                      Salvar Configurações
-                    </Button>
-                  </div>
+                      <div className="flex justify-end">
+                        <Button
+                          onClick={handleSavePayoutSettings}
+                          disabled={payoutSettingsSaving}
+                          className="bg-aumigo-teal hover:bg-aumigo-teal/90"
+                        >
+                          {payoutSettingsSaving ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <Save className="h-4 w-4 mr-2" />
+                          )}
+                          Salvar
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

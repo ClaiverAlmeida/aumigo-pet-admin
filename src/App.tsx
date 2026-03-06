@@ -17,6 +17,10 @@ import { AdminLayout } from './components/admin-layout'
 import { AdminDashboard } from './components/admin-dashboard'
 import { AdminUsers } from './components/admin-users'
 import { AdminComingSoon } from './components/admin-coming-soon'
+import { AdminFinance } from './components/admin-finance'
+import { AdminCompanies } from './components/admin-companies'
+import { AdminPayments } from './components/admin-payments'
+import { AdminRepasses } from './components/admin-repasses'
 import { AdminSettings } from './components/admin-settings'
 import { RouteSwitcher } from './components/route-switcher'
 import { OnboardingCompany } from './components/onboarding-company'
@@ -121,11 +125,22 @@ export default function App() {
 
   // Handler de navegação que atualiza a URL
   const handleNavigate = (page: string) => {
-    // Evita duplicar /admin quando o caller passar "admin/users" em vez de "users"
     const normalizedPage = page.replace(/^admin\/?,?/, '') || 'dashboard'
     setCurrentPage(normalizedPage)
     if (currentMode === 'admin') {
       navigate(`/admin/${normalizedPage}`)
+    } else {
+      navigate(`/pro/${normalizedPage}`)
+    }
+  }
+
+  // Navegação com parâmetros (ex.: companyId para pré-selecionar empresa na tela de transações)
+  const handleNavigateWithParams = (page: string, params?: { companyId?: string }) => {
+    const normalizedPage = page.replace(/^admin\/?,?/, '') || 'dashboard'
+    setCurrentPage(normalizedPage)
+    if (currentMode === 'admin') {
+      const query = params?.companyId ? `?companyId=${encodeURIComponent(params.companyId)}` : ''
+      navigate(`/admin/${normalizedPage}${query}`)
     } else {
       navigate(`/pro/${normalizedPage}`)
     }
@@ -140,6 +155,14 @@ export default function App() {
           return <AdminUsers onNavigate={handleNavigate} />
         case 'settings':
           return <AdminSettings adminUser={adminUser ?? undefined} />
+        case 'companies':
+          return <AdminCompanies onNavigate={handleNavigateWithParams} />
+        case 'payments':
+          return <AdminPayments onNavigate={handleNavigate} />
+        case 'transactions':
+          return <AdminFinance onNavigate={handleNavigate} />
+        case 'payouts':
+          return <AdminRepasses onNavigate={handleNavigate} />
         default:
           return <AdminComingSoon pageId={currentPage} onNavigate={handleNavigate} />
       }

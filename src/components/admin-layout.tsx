@@ -32,6 +32,7 @@ import {
   Webhook,
   Building2,
   Store,
+  ListOrdered,
 } from 'lucide-react'
 import { NotificationBell } from './notification-bell'
 
@@ -94,8 +95,8 @@ const navigationSections: NavSection[] = [
     title: 'Financeiro',
     items: [
       { id: 'payments', label: 'Pagamentos', icon: CreditCard },
-      { id: 'payouts', label: 'Repasses', icon: DollarSign },
-      { id: 'transactions', label: 'Transações', icon: Receipt },
+      { id: 'transactions', label: 'Transações', icon: DollarSign },
+      { id: 'payouts', label: 'Repasses', icon: ListOrdered },
     ]
   },
   // {
