@@ -7,6 +7,7 @@ export interface KycDocument {
   feedback?: string;
   fileId: string;
   providerId: string;
+  companyId?: string;
   reviewedById?: string;
   createdAt: string;
   updatedAt: string;
@@ -21,6 +22,10 @@ export interface KycDocument {
     id: string;
     name: string;
   };
+  companyName?: string;
+  companyCity?: string | null;
+  companyState?: string | null;
+  companyCnpj?: string | null;
   reviewedBy?: {
     id: string;
     name: string;
@@ -59,6 +64,19 @@ export interface UpdateKycDocumentDto {
   reviewedById?: string;
 }
 
+export interface MyKycDocumentsResponse {
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  documents: KycDocument[];
+}
+
+export interface CreateMyKycDocumentsDto {
+  documents: {
+    type: string;
+    fileId: string;
+  }[];
+  notes?: string;
+}
+
 /**
  * 🆔 SERVIÇO DE KYC DOCUMENTS
  * Gerencia documentos KYC dos profissionais
@@ -71,9 +89,11 @@ export class KycDocumentsService {
     providerId?: string;
     status?: string;
     type?: string;
+    page?: number;
+    limit?: number;
   }) {
     return api.get<KycDocument[]>('/kyc-documents', {
-      params: filters,
+      params: { page: 1, limit: 50, ...filters },
       useCache: true,
       cacheTtl: 60000, // 1 minuto
     });
@@ -137,6 +157,64 @@ export class KycDocumentsService {
    */
   async delete(id: string) {
     return api.delete(`/kyc-documents/${id}`);
+  }
+
+  /**
+   * Deletar documento do profissional logado por tipo (fluxo "meu KYC")
+   */
+  async deleteMyDocument(type: string) {
+    const response = await api.delete<{ data: MyKycDocumentsResponse }>(
+      `/kyc-documents/me/${type}`,
+    );
+
+    if (!response.success || !response.data) {
+      return response as any;
+    }
+
+    return {
+      ...response,
+      data: (response.data as any).data ?? (response.data as any),
+    } as { success: boolean; data?: MyKycDocumentsResponse; error?: string };
+  }
+
+  /**
+   * Salvar documentos de KYC do profissional logado (fluxo "meu KYC")
+   */
+  async salvarMeusDocumentos(data: CreateMyKycDocumentsDto) {
+    const response = await api.post<{ data: MyKycDocumentsResponse }>(
+      '/kyc-documents/me',
+      data,
+    );
+
+    if (!response.success || !response.data) {
+      return response as any;
+    }
+
+    return {
+      ...response,
+      data: response.data.data,
+    };
+  }
+
+  /**
+   * Buscar documentos de KYC do profissional logado + status agregado
+   */
+  async buscarMeusDocumentos() {
+    const response = await api.get<{ data: MyKycDocumentsResponse }>(
+      '/kyc-documents/me',
+      {
+        useCache: false,
+      },
+    );
+
+    if (!response.success || !response.data) {
+      return response as any;
+    }
+
+    return {
+      ...response,
+      data: response.data.data,
+    };
   }
 }
 

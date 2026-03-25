@@ -242,7 +242,7 @@ export function AdminCompanyDetail({ company, onBack, onNavigateToTransactions }
               <Briefcase className="h-8 w-8 text-aumigo-teal shrink-0" />
               <div>
                 <p className="text-2xl font-semibold text-aumigo-teal">{company.serviceProvidersCount ?? 0}</p>
-                <p className="text-xs text-aumigo-gray">Profissionais / funcionários</p>
+                <p className="text-xs text-aumigo-gray">Serviços / itens de catálogo</p>
               </div>
             </div>
           </CardContent>

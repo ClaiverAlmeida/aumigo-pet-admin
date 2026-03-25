@@ -6,6 +6,7 @@ export interface ServiceProvider {
   category: string;
   description?: string;
   logo?: string;
+  banner?: string;
   phone?: string;
   email?: string;
   website?: string;
@@ -27,6 +28,7 @@ export interface CreateServiceProviderData {
   category: string;
   description?: string;
   logo?: string;
+  banner?: string;
   phone?: string;
   email?: string;
   website?: string;

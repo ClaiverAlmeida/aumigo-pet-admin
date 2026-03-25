@@ -6,7 +6,7 @@ import { Label } from './ui/label'
 import { Alert, AlertDescription } from './ui/alert'
 import { Checkbox } from './ui/checkbox'
 import { ImageWithFallback } from './figma/ImageWithFallback'
-import exampleImage from '../assets/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
+import exampleImage from 'figma:asset/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
 import {
   Eye,
   EyeOff,
@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../contexts/AuthContext'
+import { useRouter } from '../hooks/useRouter'
 
 interface AdminUser {
   id: string
@@ -37,6 +38,7 @@ interface AdminAuthProps {
 
 export function AdminAuth({ onLogin }: AdminAuthProps) {
   const { signInAdmin } = useAuth()
+  const { navigate } = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   
@@ -197,7 +199,7 @@ export function AdminAuth({ onLogin }: AdminAuthProps) {
                 />
                 <Shield className="h-8 w-8 text-red-300" />
               </div>
-              <h1 className="text-white mb-4 text-3xl">Admin AuMigoPet</h1>
+              <h1 className="text-white mb-4 text-3xl">Admin AuMigosPet</h1>
               <div className="bg-red-700/50 rounded-xl p-4 border border-red-600/50">
                 <p className="text-red-200 text-lg flex items-center justify-center gap-2">
                   <AlertTriangle className="h-5 w-5" />
@@ -340,6 +342,15 @@ export function AdminAuth({ onLogin }: AdminAuthProps) {
                   >
                     {isLoading ? 'Validando...' : 'Acessar Painel Admin'}
                     {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-12 text-base border-gray-300"
+                    onClick={() => navigate('/pro/overview')}
+                  >
+                    Ir para o Painel Profissional
                   </Button>
                 </form>
               </CardContent>

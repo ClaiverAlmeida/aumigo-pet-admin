@@ -7,7 +7,7 @@ import { ProBookings } from './components/pro-bookings'
 import { ProKYC } from './components/pro-kyc'
 import { ProFinance } from './components/pro-finance'
 import { ProReviews } from './components/pro-reviews'
-import { ProChat } from './components/pro-chat'
+import { ProChatLive } from './components/pro-chat-live'
 import { ProSettings } from './components/pro-settings'
 import { ProNotifications } from './components/pro-notifications'
 import { ProAds } from './components/pro-ads'
@@ -22,6 +22,8 @@ import { AdminCompanies } from './components/admin-companies'
 import { AdminPayments } from './components/admin-payments'
 import { AdminRepasses } from './components/admin-repasses'
 import { AdminSettings } from './components/admin-settings'
+import { AdminKycTriage } from './components/admin-kyc-triage'
+import { AdminIncidents } from './components/admin-incidents'
 import { RouteSwitcher } from './components/route-switcher'
 import { OnboardingCompany } from './components/onboarding-company'
 import { Toaster } from './components/ui/sonner'
@@ -153,8 +155,14 @@ export default function App() {
           return <AdminDashboard onNavigate={handleNavigate} />
         case 'users':
           return <AdminUsers onNavigate={handleNavigate} />
+        case 'kyc':
+          return <AdminKycTriage onNavigate={handleNavigate} />
+        case 'incidents':
+          return <AdminIncidents />
         case 'settings':
           return <AdminSettings adminUser={adminUser ?? undefined} />
+        case 'notifications':
+          return <ProNotifications />
         case 'companies':
           return <AdminCompanies onNavigate={handleNavigateWithParams} />
         case 'payments':
@@ -185,7 +193,7 @@ export default function App() {
         case 'reviews':
           return <ProReviews />
         case 'chat':
-          return <ProChat />
+          return <ProChatLive />
         case 'settings':
           return <ProSettings />
         case 'notifications':

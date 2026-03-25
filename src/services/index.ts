@@ -33,8 +33,17 @@ export type { User } from './users.service';
 
 // 📅 SERVIÇO DE BOOKINGS
 export { bookingsService, BookingsService } from './bookings.service';
-export type { Booking, BookingStatus, UpdateBookingData } from './bookings.service';
+export type {
+  Booking,
+  BookingStatus,
+  UpdateBookingData,
+  CompanyOperationalDashboard,
+} from './bookings.service';
 
 // ⭐ SERVIÇO DE REVIEWS
 export { reviewsService, ReviewsService } from './reviews.service';
 export type { Review, ReviewStatistics, ResponseReviewData } from './reviews.service';
+
+// 💬 SERVIÇO DE CHAT
+export { chatService } from './chat.service';
+export type { ChatConversation, ChatMessage, ChatPaginatedResponse } from './chat.service';

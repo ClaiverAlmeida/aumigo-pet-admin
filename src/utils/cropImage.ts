@@ -9,7 +9,12 @@ const DEFAULT_OUTPUT_SIZE = 512;
 export async function createCroppedImage(
   imageSrc: string,
   cropPercent: Area,
-  outputSize = DEFAULT_OUTPUT_SIZE
+  outputSizeOrOptions:
+    | number
+    | {
+        outputWidth: number;
+        outputHeight: number;
+      } = DEFAULT_OUTPUT_SIZE
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -22,15 +27,19 @@ export async function createCroppedImage(
       const y = (cropPercent.y / 100) * nh;
       const w = (cropPercent.width / 100) * nw;
       const h = (cropPercent.height / 100) * nh;
+      const output =
+        typeof outputSizeOrOptions === 'number'
+          ? { outputWidth: outputSizeOrOptions, outputHeight: outputSizeOrOptions }
+          : outputSizeOrOptions;
       const canvas = document.createElement('canvas');
-      canvas.width = outputSize;
-      canvas.height = outputSize;
+      canvas.width = output.outputWidth;
+      canvas.height = output.outputHeight;
       const ctx = canvas.getContext('2d');
       if (!ctx) {
         reject(new Error('Canvas não disponível'));
         return;
       }
-      ctx.drawImage(image, x, y, w, h, 0, 0, outputSize, outputSize);
+      ctx.drawImage(image, x, y, w, h, 0, 0, canvas.width, canvas.height);
       canvas.toBlob(
         (blob) => (blob ? resolve(blob) : reject(new Error('Falha ao gerar imagem'))),
         'image/jpeg',

@@ -5466,3 +5466,10 @@
 .dark [data-sonner-toast] [data-description] {
   color: rgb(156, 163, 175) !important; /* gray-400 */
 }
+
+/* pro-services: bundle não inclui `md:hidden`; alinhar com `hidden md:block` da tabela (48rem = md) */
+@media (width >= 48rem) {
+  .pro-services-catalog-mobile-only {
+    display: none;
+  }
+}

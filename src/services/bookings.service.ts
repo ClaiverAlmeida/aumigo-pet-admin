@@ -41,6 +41,39 @@ export interface UpdateBookingData {
   time?: string; // HH:MM
 }
 
+/** Resposta de GET /bookings/scope/company/dashboard */
+export interface CompanyOperationalDashboard {
+  referenceMonth: { year: number; month: number };
+  bookingsInMonth: {
+    total: number;
+    done: number;
+    confirmed: number;
+    pending: number;
+    cancelled: number;
+    approvalRatePercent: number;
+    appointmentsProgressPercent: number;
+  };
+  bookingsPreviousMonth: { total: number; done: number };
+  paymentsCurrentMonthCents: {
+    gross: number;
+    platformFee: number;
+    net: number;
+  };
+  paymentsPreviousMonthCents: { net: number };
+  reviewsInMonth: {
+    averageRating: number | null;
+    count: number;
+  };
+  reviewsAllTime: {
+    averageRating: number | null;
+    count: number;
+  };
+  deltas: {
+    revenueNetPercentVsPreviousMonth: number | null;
+    bookingsTotalPercentVsPreviousMonth: number | null;
+  };
+}
+
 export class BookingsService {
   /**
    * Busca todos os agendamentos do service provider logado
@@ -76,6 +109,61 @@ export class BookingsService {
       return { success: false, error: 'Erro ao buscar agendamentos' };
     } catch (error: any) {
       return { success: false, error: error.message || 'Erro ao buscar agendamentos' };
+    }
+  }
+
+  /**
+   * Lista agendamentos **somente** da empresa do tenant (backend: `/bookings/scope/company`).
+   * Evita misturar papel de tutor (cliente) com operação do negócio.
+   */
+  async getAllByCompany(filters?: {
+    status?: BookingStatus;
+    search?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ success: boolean; data?: { data: Booking[]; pagination?: any }; error?: string }> {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.status) params.append('status', filters.status);
+      if (filters?.search) params.append('q', filters.search);
+      if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom);
+      if (filters?.dateTo) params.append('dateTo', filters.dateTo);
+      if (filters?.page) params.append('page', filters.page.toString());
+      if (filters?.limit) params.append('limit', filters.limit.toString());
+      const queryString = params.toString();
+      const url = `/bookings/scope/company${queryString ? `?${queryString}` : ''}`;
+      const result = await api.get<{ data: Booking[]; pagination?: any }>(url);
+      if (result.success && result.data) {
+        return { success: true, data: result.data as any };
+      }
+      return { success: false, error: 'Erro ao buscar agendamentos da empresa' };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Erro ao buscar agendamentos da empresa' };
+    }
+  }
+
+  /**
+   * KPIs reais do painel (financeiro, agendamentos do mês, avaliações).
+   */
+  async getCompanyDashboard(filters?: {
+    year?: number;
+    month?: number;
+  }): Promise<{ success: boolean; data?: CompanyOperationalDashboard; error?: string }> {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.year != null) params.append('year', String(filters.year));
+      if (filters?.month != null) params.append('month', String(filters.month));
+      const qs = params.toString();
+      const url = `/bookings/scope/company/dashboard${qs ? `?${qs}` : ''}`;
+      const result = await api.get<CompanyOperationalDashboard>(url);
+      if (result.success && result.data) {
+        return { success: true, data: result.data as CompanyOperationalDashboard };
+      }
+      return { success: false, error: 'Erro ao carregar dashboard da empresa' };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Erro ao carregar dashboard da empresa' };
     }
   }
 

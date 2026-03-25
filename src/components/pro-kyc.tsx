@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react'
+import type React from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
-import { 
+import { PhotoCropUpload } from './PhotoCropUpload'
+import {
   Loader2,
   User,
-  Building
+  Building,
 } from 'lucide-react'
 import { companiesService, usersService } from '../services'
 import { toast } from 'sonner'
 import { useAuth } from '../contexts/AuthContext'
+import { ProKycDocumentsSection } from './pro-kyc-documents'
 
 interface UserData {
   id: string
@@ -28,6 +31,7 @@ interface UserData {
 interface CompanyData {
   id: string
   name: string
+  logo?: string
   cnpj?: string
   address?: string
   addressNumber?: string
@@ -37,6 +41,67 @@ interface CompanyData {
   contactPhone?: string
   contactEmail?: string
   website?: string
+  primaryCategory?: string
+}
+
+function getCompanyCategoryConfig(category?: string): {
+  label: string
+  badgeClassName: string
+} | null {
+  if (!category) return null
+  const normalized = category.toUpperCase()
+  switch (normalized) {
+    case 'VETERINARY':
+      return {
+        label: 'Veterinária',
+        badgeClassName: 'bg-emerald-100 text-emerald-900 border border-emerald-200',
+      }
+    case 'HOSPITAL':
+      return {
+        label: 'Hospital veterinário',
+        badgeClassName: 'bg-emerald-100 text-emerald-900 border border-emerald-200',
+      }
+    case 'FARMACY':
+      return {
+        label: 'Farmácia pet',
+        badgeClassName: 'bg-emerald-100 text-emerald-900 border border-emerald-200',
+      }
+    case 'PET_SHOP':
+      return {
+        label: 'Pet shop',
+        badgeClassName: 'bg-amber-100 text-amber-900 border border-amber-200',
+      }
+    case 'GROOMING':
+      return {
+        label: 'Banho e tosa',
+        badgeClassName: 'bg-amber-100 text-amber-900 border border-amber-200',
+      }
+    case 'HOTEL':
+      return {
+        label: 'Hotel para pets',
+        badgeClassName: 'bg-amber-100 text-amber-900 border border-amber-200',
+      }
+    case 'WALKER':
+      return {
+        label: 'Passeio',
+        badgeClassName: 'bg-sky-100 text-sky-900 border border-sky-200',
+      }
+    case 'TRAINING':
+      return {
+        label: 'Adestramento',
+        badgeClassName: 'bg-sky-100 text-sky-900 border border-sky-200',
+      }
+    case 'OTHER':
+      return {
+        label: 'Serviço especializado para pets',
+        badgeClassName: 'bg-muted text-foreground border border-border',
+      }
+    default:
+      return {
+        label: 'Serviço para pets',
+        badgeClassName: 'bg-muted text-foreground border border-border',
+      }
+  }
 }
 
 export function ProKYC() {
@@ -55,6 +120,7 @@ export function ProKYC() {
   const [company, setCompany] = useState<CompanyData>({
     id: '',
     name: '',
+    logo: '',
     cnpj: '',
     address: '',
     addressNumber: '',
@@ -114,6 +180,7 @@ export function ProKYC() {
         setCompany({
           id: companyData.id || '',
           name: companyData.name || '',
+          logo: companyData.logo || '',
           cnpj: companyData.cnpj || '',
           address: companyData.address || '',
           addressNumber: companyData.addressNumber || '',
@@ -123,6 +190,7 @@ export function ProKYC() {
           contactPhone: companyData.contactPhone || '',
           contactEmail: companyData.contactEmail || '',
           website: companyData.website || '',
+          primaryCategory: companyData.primaryCategory || '',
         })
       }
     } catch (error: any) {
@@ -146,6 +214,7 @@ export function ProKYC() {
 
       const companyResult = await companiesService.updateMyCompany({
         name: company.name || undefined,
+        logo: prepareValue(company.logo),
         cnpj: prepareValue(company.cnpj),
         address: prepareValue(company.address),
         addressNumber: prepareValue(company.addressNumber),
@@ -183,11 +252,13 @@ export function ProKYC() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-10 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-10 space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-semibold">KYC & Perfil Profissional</h2>
-          <p className="text-sm text-muted-foreground mt-1">Gerencie seus dados pessoais e da empresa</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Gerencie seus dados e acompanhe a jornada de verificação profissional
+          </p>
         </div>
       </div>
 
@@ -195,10 +266,13 @@ export function ProKYC() {
         {/* Card: Dados do Usuário (Somente Leitura) */}
         <Card>
           <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="flex items-center gap-2">
-              <User className="w-5 h-5" />
-              Dados do Usuário
-            </CardTitle>
+            <div className="flex flex-col gap-2">
+              <CardTitle className="flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Dados do Usuário
+              </CardTitle>
+             
+            </div>
             <CardDescription>Informações pessoais do seu perfil (somente leitura)</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 p-4 sm:p-6">
@@ -246,7 +320,9 @@ export function ProKYC() {
               <div className="flex items-center gap-2">
                 <Building className="w-5 h-5 shrink-0" />
                 Dados da Empresa
+                
               </div>
+              
               <Button 
                 variant="outline" 
                 size="sm"
@@ -263,9 +339,53 @@ export function ProKYC() {
                 {isEditingCompany ? 'Cancelar' : 'Editar'}
               </Button>
             </CardTitle>
+            {(() => {
+                const config = getCompanyCategoryConfig(company.primaryCategory)
+                if (!config) return null
+                return (
+                  <div
+                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1 w-fit text-xs ${config.badgeClassName}`}
+                  >
+                    <span className="font-medium opacity-80">Categoria principal:</span>
+                    <span className="font-semibold">{config.label}</span>
+                  </div>
+                )
+              })()}
             <CardDescription>Informações da sua empresa</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 p-4 sm:p-6">
+          <CardContent className="space-y-4 p-4 sm:p-6">  
+            {isEditingCompany ? (
+              <PhotoCropUpload
+                value={company.logo}
+                onUploaded={(url) => setCompany((prev) => ({ ...prev, logo: url }))}
+                onRemove={() => setCompany((prev) => ({ ...prev, logo: '' }))}
+                uploadType="SERVICE_IMAGE"
+                uploadDescription="Logo da empresa"
+                loadingMessage="Enviando logo..."
+                successMessage="Logo atualizado! Salve as alterações para aplicar a nova imagem."
+                modalTitle="Cortar logo da empresa"
+                modalSubtitle="Ajuste a área de corte. A logo será quadrada."
+                confirmButtonText="Cortar e usar"
+                sectionTitle="Logo da empresa"
+                sectionDescription="Use uma imagem quadrada para identificar sua empresa."
+                fallbackLabel={(company.name || 'E').charAt(0).toUpperCase()}
+                variant="product"
+                cropAspect={1}
+                outputSize={{ width: 512, height: 512 }}
+                defaultFileName="company-logo.jpg"
+              />
+            ) : (
+              <div>
+                <Label>Logo da Empresa</Label>
+                <div className="mt-2">
+                  <Avatar className="h-16 w-16">
+                    <AvatarImage src={company.logo} />
+                    <AvatarFallback>{(company.name || 'E').charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                </div>
+              </div>
+            )}
+
             <div>
               <Label>Nome da Empresa</Label>
               {isEditingCompany ? (
@@ -411,6 +531,8 @@ export function ProKYC() {
           </CardContent>
         </Card>
       </div>
+
+      <ProKycDocumentsSection />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import type React from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
@@ -11,8 +12,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Textarea } from './ui/textarea'
 import { Alert, AlertDescription } from './ui/alert'
-import { 
-  Calendar, 
+import {
+  Calendar,
   Clock,
   MapPin,
   Phone,
@@ -30,6 +31,7 @@ import {
 } from 'lucide-react'
 import { bookingsService, Booking, BookingStatus } from '../services/bookings.service'
 import { toast } from 'sonner'
+import './pro-bookings.responsive.css'
 
 const statusMap = {
   PENDING: { label: 'Pendente', color: 'yellow' as const },
@@ -79,7 +81,7 @@ export function ProBookings() {
   const loadBookings = async () => {
     setIsLoading(true)
     try {
-      const result = await bookingsService.getAll({
+      const result = await bookingsService.getAllByCompany({
         status: filters.status !== 'all' ? filters.status : undefined,
         search: filters.search || undefined,
         dateFrom: filters.dateFrom || undefined,
@@ -119,13 +121,13 @@ export function ProBookings() {
 
     try {
       const result = await bookingsService.update(bookingId, { status: newStatus })
-      
+
       if (result.success && result.data) {
-        setBookings(bookings.map(booking => 
+        setBookings(bookings.map(booking =>
           booking.id === bookingId ? result.data! : booking
         ))
         toast.success(`Agendamento ${newStatus === 'CONFIRMED' ? 'confirmado' : newStatus === 'DONE' ? 'concluído' : 'cancelado'} com sucesso!`)
-        
+
         // Atualizar booking selecionado se for o mesmo
         if (selectedBooking?.id === bookingId) {
           setSelectedBooking(result.data)
@@ -145,10 +147,10 @@ export function ProBookings() {
   // Filtrar localmente (aplicar todos os filtros)
   const filteredBookings = bookings.filter(booking => {
     // Filtro de busca (nome, pet ou serviço)
-    if (filters.search && 
-        !booking.customerName?.toLowerCase().includes(filters.search.toLowerCase()) &&
-        !booking.petName?.toLowerCase().includes(filters.search.toLowerCase()) &&
-        !booking.serviceName?.toLowerCase().includes(filters.search.toLowerCase())) {
+    if (filters.search &&
+      !booking.customerName?.toLowerCase().includes(filters.search.toLowerCase()) &&
+      !booking.petName?.toLowerCase().includes(filters.search.toLowerCase()) &&
+      !booking.serviceName?.toLowerCase().includes(filters.search.toLowerCase())) {
       return false
     }
 
@@ -185,25 +187,25 @@ export function ProBookings() {
 
     return true
   })
-  .sort((a, b) => {
-    // Ordenar por data e hora mais recente primeiro
-    try {
-      // Combinar date e time para criar um timestamp completo
-      const dateA = new Date(a.date)
-      const timeA = a.time ? a.time.split(':') : ['0', '0']
-      dateA.setHours(parseInt(timeA[0]) || 0, parseInt(timeA[1]) || 0, 0, 0)
+    .sort((a, b) => {
+      // Ordenar por data e hora mais recente primeiro
+      try {
+        // Combinar date e time para criar um timestamp completo
+        const dateA = new Date(a.date)
+        const timeA = a.time ? a.time.split(':') : ['0', '0']
+        dateA.setHours(parseInt(timeA[0]) || 0, parseInt(timeA[1]) || 0, 0, 0)
 
-      const dateB = new Date(b.date)
-      const timeB = b.time ? b.time.split(':') : ['0', '0']
-      dateB.setHours(parseInt(timeB[0]) || 0, parseInt(timeB[1]) || 0, 0, 0)
+        const dateB = new Date(b.date)
+        const timeB = b.time ? b.time.split(':') : ['0', '0']
+        dateB.setHours(parseInt(timeB[0]) || 0, parseInt(timeB[1]) || 0, 0, 0)
 
-      // Ordenar decrescente (mais recente primeiro)
-      return dateB.getTime() - dateA.getTime()
-    } catch {
-      // Em caso de erro, manter ordem original
-      return 0
-    }
-  })
+        // Ordenar decrescente (mais recente primeiro)
+        return dateB.getTime() - dateA.getTime()
+      } catch {
+        // Em caso de erro, manter ordem original
+        return 0
+      }
+    })
 
   const pendingCount = bookings.filter(b => b.status === 'PENDING').length
   const today = new Date().toISOString().split('T')[0]
@@ -225,7 +227,7 @@ export function ProBookings() {
             {filteredBookings.length} agendamento(s) encontrado(s)
           </p>
         </div>
-        
+
         <div className="flex flex-wrap gap-2">
           <Badge variant="outline">
             {pendingCount} Pendente(s)
@@ -240,7 +242,7 @@ export function ProBookings() {
       <Card>
         <CardHeader className="p-4 sm:p-6">
           <CardTitle className="flex items-center gap-2">
-            <Filter className="w-4 h-4 shrink-0" />
+            <Filter className="w-4 h-4 shrink-0đ" />
             Filtros
           </CardTitle>
           <CardDescription>Busque e filtre agendamentos por status e data</CardDescription>
@@ -260,7 +262,7 @@ export function ProBookings() {
                 />
               </div>
             </div>
-            
+
             <div>
               <Label htmlFor="status">Status</Label>
               <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value as 'all' | BookingStatus })}>
@@ -276,7 +278,7 @@ export function ProBookings() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div>
               <Label htmlFor="date-from">Data de</Label>
               <Input
@@ -287,7 +289,7 @@ export function ProBookings() {
                 onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
               />
             </div>
-            
+
             <div>
               <Label htmlFor="date-to">Data até</Label>
               <Input
@@ -305,136 +307,241 @@ export function ProBookings() {
       {/* Lista de Agendamentos */}
       <Card>
         <CardContent className="p-4 sm:p-6 overflow-hidden">
-          <div className="overflow-x-auto -mx-2 sm:mx-0">
-          <Table className="min-w-[640px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Cliente & Pet</TableHead>
-                <TableHead>Serviço</TableHead>
-                <TableHead>Data & Hora</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
-                    <p className="text-muted-foreground">Carregando agendamentos...</p>
-                  </TableCell>
-                </TableRow>
-              ) : filteredBookings.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
-                    <p className="text-muted-foreground">Nenhum agendamento encontrado</p>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredBookings.map((booking) => (
-                  <TableRow key={booking.id} className="cursor-pointer hover:bg-muted/50">
-                    <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
+          <div className="bookings-mobile space-y-3">
+            {isLoading ? (
+              <div className="py-8 text-center text-muted-foreground">Carregando agendamentos...</div>
+            ) : filteredBookings.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">Nenhum agendamento encontrado</div>
+            ) : (
+              filteredBookings.map((booking) => (
+                <Card
+                  key={booking.id}
+                  className="border border-border/70 cursor-pointer"
+                  onClick={() => {
+                    setSelectedBooking(booking)
+                    setIsDetailDialogOpen(true)
+                  }}
+                >
+                  <CardContent className="p-3 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-10 w-10 shrink-0">
                         <AvatarImage src={booking.customer?.avatar} />
                         <AvatarFallback>{(booking.customerName || 'C')[0]}</AvatarFallback>
                       </Avatar>
-                      <div>
-                        <p className="font-medium text-sm">{booking.customerName || 'Cliente'}</p>
-                        <p className="text-xs text-muted-foreground">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm truncate">{booking.customerName || 'Cliente'}</p>
+                        <p className="text-xs text-muted-foreground truncate">
                           {booking.petName || 'Pet'} {booking.pet?.breed ? `(${booking.pet.breed})` : ''}
                         </p>
+                        <p className="text-sm font-medium mt-2 truncate">
+                          {booking.serviceName || booking.service?.name || 'Serviço'}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {formatDate(booking.date)}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {booking.time}
+                          </span>
+                          <span className="font-medium">{formatPrice(booking.price)}</span>
+                        </div>
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium text-sm">{booking.serviceName || booking.service?.name || 'Serviço'}</p>
-                      {booking.address && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          Domicílio
-                        </p>
-                      )}
+
+                    <div className="flex items-center justify-between gap-2">
+                      <Badge
+                        variant={
+                          booking.status === 'CONFIRMED' ? 'default' :
+                            booking.status === 'DONE' ? 'default' :
+                              booking.status === 'CANCELLED' ? 'destructive' : 'secondary'
+                        }
+                        className={
+                          booking.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-700 hover:bg-blue-100' :
+                            booking.status === 'DONE' ? 'bg-green-100 text-green-700 hover:bg-green-100' :
+                              booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100' : ''
+                        }
+                      >
+                        {statusMap[booking.status].label}
+                      </Badge>
+
+                      <div className="flex items-center gap-2">
+                        {booking.status === 'PENDING' ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleStatusChange(booking.id, 'CONFIRMED')
+                            }}
+                          >
+                            Confirmar
+                          </Button>
+                        ) : null}
+                        {booking.status === 'CONFIRMED' ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleStatusChange(booking.id, 'DONE')
+                            }}
+                          >
+                            Concluir
+                          </Button>
+                        ) : null}
+                        {booking.status !== 'CANCELLED' && booking.status !== 'DONE' ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleStatusChange(booking.id, 'CANCELLED')
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-sm">
-                      <Calendar className="w-3 h-3" />
-                      <span>{formatDate(booking.date)}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Clock className="w-3 h-3" />
-                      <span>{booking.time}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant={
-                        booking.status === 'CONFIRMED' ? 'default' :
-                        booking.status === 'DONE' ? 'default' :
-                        booking.status === 'CANCELLED' ? 'destructive' : 'secondary'
-                      }
-                      className={
-                        booking.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-700 hover:bg-blue-100' :
-                        booking.status === 'DONE' ? 'bg-green-100 text-green-700 hover:bg-green-100' :
-                        booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100' : ''
-                      }
-                    >
-                      {statusMap[booking.status].label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-medium">{formatPrice(booking.price)}</span>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => {
-                          setSelectedBooking(booking)
-                          setIsDetailDialogOpen(true)
-                        }}>
-                          <Eye className="w-4 h-4 mr-2" />
-                          Ver Detalhes
-                        </DropdownMenuItem>
-                        {/* <DropdownMenuItem onClick={() => {}}>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+
+          <div className="bookings-desktop overflow-x-auto -mx-2 sm:mx-0">
+            <Table className="min-w-[640px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente & Pet</TableHead>
+                  <TableHead>Serviço</TableHead>
+                  <TableHead>Data & Hora</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8">
+                      <p className="text-muted-foreground">Carregando agendamentos...</p>
+                    </TableCell>
+                  </TableRow>
+                ) : filteredBookings.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8">
+                      <p className="text-muted-foreground">Nenhum agendamento encontrado</p>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredBookings.map((booking) => (
+                    <TableRow key={booking.id} className="cursor-pointer hover:bg-muted/50">
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={booking.customer?.avatar} />
+                            <AvatarFallback>{(booking.customerName || 'C')[0]}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-sm">{booking.customerName || 'Cliente'}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {booking.petName || 'Pet'} {booking.pet?.breed ? `(${booking.pet.breed})` : ''}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-sm">{booking.serviceName || booking.service?.name || 'Serviço'}</p>
+                          {booking.address && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              Domicílio
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-sm">
+                          <Calendar className="w-3 h-3" />
+                          <span>{formatDate(booking.date)}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          <span>{booking.time}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            booking.status === 'CONFIRMED' ? 'default' :
+                              booking.status === 'DONE' ? 'default' :
+                                booking.status === 'CANCELLED' ? 'destructive' : 'secondary'
+                          }
+                          className={
+                            booking.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-700 hover:bg-blue-100' :
+                              booking.status === 'DONE' ? 'bg-green-100 text-green-700 hover:bg-green-100' :
+                                booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100' : ''
+                          }
+                        >
+                          {statusMap[booking.status].label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium">{formatPrice(booking.price)}</span>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => {
+                              setSelectedBooking(booking)
+                              setIsDetailDialogOpen(true)
+                            }}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              Ver Detalhes
+                            </DropdownMenuItem>
+                            {/* <DropdownMenuItem onClick={() => {}}>
                           <MessageSquare className="w-4 h-4 mr-2" />
                           Chat
                         </DropdownMenuItem> */}
-                        {booking.status === 'PENDING' && (
-                          <DropdownMenuItem onClick={() => handleStatusChange(booking.id, 'CONFIRMED')}>
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Confirmar
-                          </DropdownMenuItem>
-                        )}
-                        {booking.status === 'CONFIRMED' && (
-                          <DropdownMenuItem onClick={() => handleStatusChange(booking.id, 'DONE')}>
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Marcar Concluído
-                          </DropdownMenuItem>
-                        )}
-                        {booking.status !== 'CANCELLED' && booking.status !== 'DONE' && (
-                          <DropdownMenuItem 
-                            onClick={() => handleStatusChange(booking.id, 'CANCELLED')}
-                            className="text-destructive"
-                          >
-                            <XCircle className="w-4 h-4 mr-2" />
-                            Cancelar
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                            {booking.status === 'PENDING' && (
+                              <DropdownMenuItem onClick={() => handleStatusChange(booking.id, 'CONFIRMED')}>
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Confirmar
+                              </DropdownMenuItem>
+                            )}
+                            {booking.status === 'CONFIRMED' && (
+                              <DropdownMenuItem onClick={() => handleStatusChange(booking.id, 'DONE')}>
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Marcar Concluído
+                              </DropdownMenuItem>
+                            )}
+                            {booking.status !== 'CANCELLED' && booking.status !== 'DONE' && (
+                              <DropdownMenuItem
+                                onClick={() => handleStatusChange(booking.id, 'CANCELLED')}
+                                className="text-destructive"
+                              >
+                                <XCircle className="w-4 h-4 mr-2" />
+                                Cancelar
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
@@ -442,7 +549,7 @@ export function ProBookings() {
       {/* Dialog de Detalhes */}
       <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
         {selectedBooking && (
-          <BookingDetailDialog 
+          <BookingDetailDialog
             booking={selectedBooking}
             onClose={() => setIsDetailDialogOpen(false)}
             onStatusChange={handleStatusChange}
@@ -459,17 +566,17 @@ export function ProBookings() {
               <div className="space-y-4">
                 <div>
                   <p className="font-semibold text-lg mb-2">
-                    {pendingAction.status === 'CONFIRMED' ? 'Confirmar Agendamento' : 
-                     pendingAction.status === 'DONE' ? 'Concluir Agendamento' : 
-                     pendingAction.status === 'CANCELLED' ? 'Cancelar Agendamento' : 
-                     'Confirmar Ação'}
+                    {pendingAction.status === 'CONFIRMED' ? 'Confirmar Agendamento' :
+                      pendingAction.status === 'DONE' ? 'Concluir Agendamento' :
+                        pendingAction.status === 'CANCELLED' ? 'Cancelar Agendamento' :
+                          'Confirmar Ação'}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {pendingAction.status === 'CONFIRMED' && 
+                    {pendingAction.status === 'CONFIRMED' &&
                       'Tem certeza que deseja confirmar este agendamento?'}
-                    {pendingAction.status === 'DONE' && 
+                    {pendingAction.status === 'DONE' &&
                       'Tem certeza que deseja marcar este agendamento como concluído?'}
-                    {pendingAction.status === 'CANCELLED' && 
+                    {pendingAction.status === 'CANCELLED' &&
                       'Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita.'}
                   </p>
                 </div>
@@ -484,15 +591,15 @@ export function ProBookings() {
                   >
                     Cancelar
                   </Button>
-                  <Button 
+                  <Button
                     onClick={confirmStatusChange}
                     variant={pendingAction.status === 'CANCELLED' ? 'destructive' : 'default'}
                     className="w-full sm:w-auto"
                   >
-                    {pendingAction.status === 'CONFIRMED' ? 'Confirmar' : 
-                     pendingAction.status === 'DONE' ? 'Concluir' : 
-                     pendingAction.status === 'CANCELLED' ? 'Confirmar Cancelamento' : 
-                     'Confirmar'}
+                    {pendingAction.status === 'CONFIRMED' ? 'Confirmar' :
+                      pendingAction.status === 'DONE' ? 'Concluir' :
+                        pendingAction.status === 'CANCELLED' ? 'Confirmar Cancelamento' :
+                          'Confirmar'}
                   </Button>
                 </div>
               </div>
@@ -582,7 +689,10 @@ function BookingDetailDialog({ booking, onClose, onStatusChange, onUpdate }: Boo
   }
 
   return (
-    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+    <DialogContent
+      className="left-[50%] top-4 w-[95vw] max-w-[95vw] translate-x-[-50%] translate-y-0 overflow-y-auto overflow-x-hidden sm:top-[50%] sm:w-auto sm:max-w-2xl sm:translate-y-[-50%]"
+      style={{ maxHeight: '90vh', WebkitOverflowScrolling: 'touch' as any }}
+    >
       <DialogHeader>
         <DialogTitle>Detalhes do Agendamento</DialogTitle>
         <DialogDescription>
@@ -631,13 +741,13 @@ function BookingDetailDialog({ booking, onClose, onStatusChange, onUpdate }: Boo
                 <p className="font-medium">{booking.petName || booking.pet?.name || 'Pet'}</p>
                 {booking.pet?.species && (
                   <p className="text-sm text-muted-foreground capitalize">
-                    {booking.pet.species === 'DOG' ? 'Cachorro' : 
-                     booking.pet.species === 'CAT' ? 'Gato' :
-                     booking.pet.species === 'BIRD' ? 'Pássaro' :
-                     booking.pet.species === 'FISH' ? 'Peixe' :
-                     booking.pet.species === 'RABBIT' ? 'Coelho' :
-                     booking.pet.species === 'HAMSTER' ? 'Hamster' :
-                     booking.pet.species}
+                    {booking.pet.species === 'DOG' ? 'Cachorro' :
+                      booking.pet.species === 'CAT' ? 'Gato' :
+                        booking.pet.species === 'BIRD' ? 'Pássaro' :
+                          booking.pet.species === 'FISH' ? 'Peixe' :
+                            booking.pet.species === 'RABBIT' ? 'Coelho' :
+                              booking.pet.species === 'HAMSTER' ? 'Hamster' :
+                                booking.pet.species}
                   </p>
                 )}
                 {booking.pet?.breed && (
@@ -649,9 +759,9 @@ function BookingDetailDialog({ booking, onClose, onStatusChange, onUpdate }: Boo
                   {booking.pet?.gender && booking.pet.gender !== 'UNKNOWN' && (
                     <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <span>
-                        {booking.pet.gender === 'MALE' ? 'Macho' : 
-                         booking.pet.gender === 'FEMALE' ? 'Fêmea' : 
-                         booking.pet.gender}
+                        {booking.pet.gender === 'MALE' ? 'Macho' :
+                          booking.pet.gender === 'FEMALE' ? 'Fêmea' :
+                            booking.pet.gender}
                       </span>
                     </div>
                   )}
@@ -687,7 +797,7 @@ function BookingDetailDialog({ booking, onClose, onStatusChange, onUpdate }: Boo
                 <p className="font-medium">{formatPrice(booking.price)}</p>
               </div>
             </div>
-            
+
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <div className="flex items-center justify-between mb-1">
@@ -769,16 +879,16 @@ function BookingDetailDialog({ booking, onClose, onStatusChange, onUpdate }: Boo
             <div>
               <Label>Status</Label>
               <div className="flex items-center gap-2">
-                <Badge 
+                <Badge
                   variant={
                     booking.status === 'CONFIRMED' ? 'default' :
-                    booking.status === 'DONE' ? 'default' :
-                    booking.status === 'CANCELLED' ? 'destructive' : 'secondary'
+                      booking.status === 'DONE' ? 'default' :
+                        booking.status === 'CANCELLED' ? 'destructive' : 'secondary'
                   }
                   className={
                     booking.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-700' :
-                    booking.status === 'DONE' ? 'bg-green-100 text-green-700' :
-                    booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' : ''
+                      booking.status === 'DONE' ? 'bg-green-100 text-green-700' :
+                        booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' : ''
                   }
                 >
                   {statusMap[booking.status].label}
@@ -802,14 +912,14 @@ function BookingDetailDialog({ booking, onClose, onStatusChange, onUpdate }: Boo
               <div className="space-y-4">
                 <div>
                   <p className="font-semibold text-base mb-2">
-                    {pendingStatus === 'CONFIRMED' ? 'Confirmar Agendamento' : 
-                     pendingStatus === 'DONE' ? 'Concluir Agendamento' : 
-                     'Confirmar Ação'}
+                    {pendingStatus === 'CONFIRMED' ? 'Confirmar Agendamento' :
+                      pendingStatus === 'DONE' ? 'Concluir Agendamento' :
+                        'Confirmar Ação'}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {pendingStatus === 'CONFIRMED' && 
+                    {pendingStatus === 'CONFIRMED' &&
                       'Tem certeza que deseja confirmar este agendamento?'}
-                    {pendingStatus === 'DONE' && 
+                    {pendingStatus === 'DONE' &&
                       'Tem certeza que deseja marcar este agendamento como concluído?'}
                   </p>
                 </div>
@@ -824,13 +934,13 @@ function BookingDetailDialog({ booking, onClose, onStatusChange, onUpdate }: Boo
                   >
                     Cancelar
                   </Button>
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     onClick={confirmAction}
                   >
-                    {pendingStatus === 'CONFIRMED' ? 'Confirmar' : 
-                     pendingStatus === 'DONE' ? 'Concluir' : 
-                     'Confirmar'}
+                    {pendingStatus === 'CONFIRMED' ? 'Confirmar' :
+                      pendingStatus === 'DONE' ? 'Concluir' :
+                        'Confirmar'}
                   </Button>
                 </div>
               </div>
@@ -843,29 +953,29 @@ function BookingDetailDialog({ booking, onClose, onStatusChange, onUpdate }: Boo
           <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
             Fechar
           </Button>
-          
+
           <div className="flex flex-col sm:flex-row gap-2">
             {/* <Button variant="outline">
               <MessageSquare className="w-4 h-4 mr-2" />
               Chat
             </Button> */}
-            
+
             {booking.status === 'PENDING' && (
               <Button onClick={() => handleConfirmClick('CONFIRMED')} className="w-full sm:w-auto">
                 <CheckCircle className="w-4 h-4 mr-2" />
                 Confirmar
               </Button>
             )}
-            
+
             {booking.status === 'CONFIRMED' && (
               <Button onClick={() => handleConfirmClick('DONE')} className="w-full sm:w-auto">
                 <CheckCircle className="w-4 h-4 mr-2" />
                 Concluir
               </Button>
             )}
-            
+
             {booking.status !== 'CANCELLED' && booking.status !== 'DONE' && (
-              <Button 
+              <Button
                 variant="destructive"
                 onClick={() => setShowCancelForm(true)}
                 className="w-full sm:w-auto"
@@ -890,9 +1000,9 @@ function BookingDetailDialog({ booking, onClose, onStatusChange, onUpdate }: Boo
                   placeholder="Informe o motivo do cancelamento..."
                 />
                 <div className="flex justify-end gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={() => setShowCancelForm(false)}
                   >
                     Cancelar

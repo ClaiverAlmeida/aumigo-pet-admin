@@ -63,6 +63,31 @@ export interface ResponseReviewData {
 }
 
 export class ReviewsService {
+  async getAllByCompany(filters?: {
+    rating?: number;
+    providerId?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ success: boolean; data?: { data: Review[]; pagination?: any }; error?: string }> {
+    try {
+      const params: any = {};
+      if (filters?.rating) params.rating = filters.rating;
+      if (filters?.providerId) params.providerId = filters.providerId;
+      if (filters?.page) params.page = filters.page;
+      if (filters?.limit) params.limit = filters.limit;
+      const result = await api.get<{ data: Review[]; pagination?: any }>(
+        '/reviews/scope/company',
+        { params, useCache: false },
+      );
+      if (result.success && result.data) {
+        return { success: true, data: result.data };
+      }
+      return { success: false, error: result.error || 'Erro ao buscar avaliações' };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Erro ao buscar avaliações' };
+    }
+  }
+
   async getAll(filters?: {
     rating?: number;
     providerId?: string;
@@ -78,7 +103,10 @@ export class ReviewsService {
       if (filters?.page) params.page = filters.page;
       if (filters?.limit) params.limit = filters.limit;
 
-      const result = await api.get<{ data: Review[]; pagination?: any }>('/reviews', params);
+      const result = await api.get<{ data: Review[]; pagination?: any }>(
+        '/reviews',
+        { params },
+      );
 
       if (result.success && result.data) {
         return { success: true, data: result.data };
@@ -87,6 +115,56 @@ export class ReviewsService {
       return { success: false, error: result.error || 'Erro ao buscar avaliações' };
     } catch (error: any) {
       return { success: false, error: error.message || 'Erro ao buscar avaliações' };
+    }
+  }
+
+  async getReported(filters?: {
+    page?: number;
+    limit?: number;
+    providerId?: string;
+  }): Promise<{ success: boolean; data?: { data: Review[]; pagination?: any }; error?: string }> {
+    const page = Math.max(1, Number(filters?.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(filters?.limit) || 20));
+    const providerId = filters?.providerId;
+    const fetchLimit = Math.max(limit * 5, 100);
+
+    try {
+      const result = await this.getAll({
+        page: 1,
+        limit: fetchLimit,
+        providerId,
+      });
+
+      if (!result.success || !result.data) {
+        return { success: false, error: result.error || 'Erro ao buscar incidentes' };
+      }
+
+      const fullList = Array.isArray(result.data.data) ? result.data.data : [];
+      const reportedOnly = fullList.filter(
+        (review) => typeof review.reportReason === 'string' && review.reportReason.trim().length > 0,
+      );
+
+      const start = (page - 1) * limit;
+      const data = reportedOnly.slice(start, start + limit);
+      const total = reportedOnly.length;
+      const totalPages = Math.ceil(total / limit) || 1;
+
+      return {
+        success: true,
+        data: {
+          data,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages,
+            hasNextPage: page < totalPages,
+            hasPreviousPage: page > 1,
+          },
+        },
+      };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Erro ao buscar incidentes' };
     }
   }
 
@@ -131,7 +209,10 @@ export class ReviewsService {
       if (month !== undefined) params.month = month;
       if (year !== undefined) params.year = year;
       
-      const result = await api.get<any>('/reviews/statistics', params);
+      const result = await api.get<any>('/reviews/statistics', {
+        params,
+        useCache: false,
+      });
 
       if (result.success && result.data) {
         return { success: true, data: result.data as ReviewStatistics };
@@ -224,6 +305,49 @@ export class ReviewsService {
       return { success: false, error: result.error || 'Erro ao marcar como importante' };
     } catch (error: any) {
       return { success: false, error: error.message || 'Erro ao marcar como importante' };
+    }
+  }
+
+  async cancelarReporte(
+    id: string
+  ): Promise<{
+    success: boolean;
+    error?: string;
+    message?: string;
+    data?: { reportReason?: string | null; alreadyCleared?: boolean };
+  }> {
+    try {
+      const result = await api.patch<{
+        message?: string;
+        reportReason?: string | null;
+        alreadyCleared?: boolean;
+      }>(`/reviews/${id}/report/cancel`, {});
+
+      if (result.success) {
+        const backendResponse = result.data as any;
+        return {
+          success: true,
+          message: backendResponse?.message,
+          data: {
+            reportReason: backendResponse?.reportReason ?? null,
+            alreadyCleared: backendResponse?.alreadyCleared,
+          },
+        };
+      }
+
+      return { success: false, error: result.error || 'Erro ao cancelar reporte' };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Erro ao cancelar reporte' };
+    }
+  }
+
+  async deleteReview(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const result = await api.delete(`/reviews/${id}`);
+      if (result.success) return { success: true };
+      return { success: false, error: result.error || 'Erro ao excluir avaliação' };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Erro ao excluir avaliação' };
     }
   }
 }

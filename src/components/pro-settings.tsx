@@ -50,6 +50,12 @@ import { usersService } from '../services/users.service'
 import { filesService } from '../services/files.service'
 import { authService } from '../services/auth.service'
 import { companiesService } from '../services/companies.service'
+import {
+  BankAccountFields,
+  type BankAccountSettings,
+  type PixSettings,
+  PixFields,
+} from './pro-bank-account-fields'
 
 const OUTPUT_SIZE = 512
 
@@ -128,26 +134,9 @@ interface AvailabilitySettings {
 }
 
 /** Dados da empresa para recebimento de repasses (PIX ou conta bancária) */
-interface PayoutSettings {
+interface PayoutSettings extends BankAccountSettings, PixSettings {
   usePix: boolean
-  payoutPixKey: string
-  payoutPixKeyType: string
-  payoutBankCode: string
-  payoutBankAgency: string
-  payoutBankAccount: string
-  payoutBankAccountDigit: string
-  payoutBankOwnerName: string
-  payoutBankCpfCnpj: string
-  payoutBankAccountType: string
 }
-
-const PIX_KEY_TYPES = [
-  { value: 'CPF', label: 'CPF' },
-  { value: 'CNPJ', label: 'CNPJ' },
-  { value: 'EMAIL', label: 'E-mail' },
-  { value: 'PHONE', label: 'Telefone' },
-  { value: 'RANDOM', label: 'Chave aleatória' },
-]
 
 interface PrivacySettings {
   profileVisibility: 'public' | 'clients-only' | 'private'
@@ -1343,106 +1332,25 @@ export function ProSettings() {
                       </div>
 
                       {payoutSettings.usePix ? (
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label>Tipo da chave PIX</Label>
-                            <Select
-                              value={payoutSettings.payoutPixKeyType}
-                              onValueChange={(v) => setPayoutSettings((p) => ({ ...p, payoutPixKeyType: v }))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {PIX_KEY_TYPES.map((opt) => (
-                                  <SelectItem key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Chave PIX</Label>
-                            <Input
-                              value={payoutSettings.payoutPixKey}
-                              onChange={(e) => setPayoutSettings((p) => ({ ...p, payoutPixKey: e.target.value }))}
-                              placeholder={
-                                payoutSettings.payoutPixKeyType === 'CPF' || payoutSettings.payoutPixKeyType === 'CNPJ'
-                                  ? 'Apenas números'
-                                  : payoutSettings.payoutPixKeyType === 'PHONE'
-                                    ? '11 dígitos com DDD'
-                                    : 'Sua chave PIX'
-                              }
-                            />
-                          </div>
-                        </div>
+                        <PixFields
+                          value={payoutSettings}
+                          onChange={(next: PixSettings) =>
+                            setPayoutSettings(prev => ({
+                              ...prev,
+                              ...next,
+                            }))
+                          }
+                        />
                       ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label>Código do banco</Label>
-                            <Input
-                              value={payoutSettings.payoutBankCode}
-                              onChange={(e) => setPayoutSettings((p) => ({ ...p, payoutBankCode: e.target.value }))}
-                              placeholder="Ex: 237"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Agência</Label>
-                            <Input
-                              value={payoutSettings.payoutBankAgency}
-                              onChange={(e) => setPayoutSettings((p) => ({ ...p, payoutBankAgency: e.target.value }))}
-                              placeholder="Número da agência"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Conta</Label>
-                            <Input
-                              value={payoutSettings.payoutBankAccount}
-                              onChange={(e) => setPayoutSettings((p) => ({ ...p, payoutBankAccount: e.target.value }))}
-                              placeholder="Número da conta"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Dígito</Label>
-                            <Input
-                              value={payoutSettings.payoutBankAccountDigit}
-                              onChange={(e) => setPayoutSettings((p) => ({ ...p, payoutBankAccountDigit: e.target.value }))}
-                              placeholder="Dígito"
-                            />
-                          </div>
-                          <div className="space-y-2 sm:col-span-2">
-                            <Label>Titular da conta</Label>
-                            <Input
-                              value={payoutSettings.payoutBankOwnerName}
-                              onChange={(e) => setPayoutSettings((p) => ({ ...p, payoutBankOwnerName: e.target.value }))}
-                              placeholder="Nome completo do titular"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>CPF ou CNPJ do titular</Label>
-                            <Input
-                              value={payoutSettings.payoutBankCpfCnpj}
-                              onChange={(e) => setPayoutSettings((p) => ({ ...p, payoutBankCpfCnpj: e.target.value }))}
-                              placeholder="Apenas números"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Tipo de conta</Label>
-                            <Select
-                              value={payoutSettings.payoutBankAccountType}
-                              onValueChange={(v) => setPayoutSettings((p) => ({ ...p, payoutBankAccountType: v }))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="CONTA_CORRENTE">Conta corrente</SelectItem>
-                                <SelectItem value="CONTA_POUPANCA">Conta poupança</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
+                        <BankAccountFields
+                          value={payoutSettings}
+                          onChange={(next: BankAccountSettings) =>
+                            setPayoutSettings(prev => ({
+                              ...prev,
+                              ...next,
+                            }))
+                          }
+                        />
                       )}
 
                       <div className="bg-aumigo-blue/10 border border-aumigo-blue/20 rounded-lg p-4">

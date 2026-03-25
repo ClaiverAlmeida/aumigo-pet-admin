@@ -13,15 +13,17 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Alert, AlertDescription } from './ui/alert'
 import { ImageWithFallback } from './figma/ImageWithFallback'
 import { PhotoCropUpload } from './PhotoCropUpload'
+import { ServiceBannerCropField } from './ServiceBannerCropField'
+import './pro-services.catalog.css'
 import { servicesService, Service as BackendService } from '../services/services.service'
 import { serviceProvidersService, ServiceProvider as BackendProvider } from '../services/service-providers.service'
 import { companiesService, Company } from '../services/companies.service'
 import { useAuth } from '../contexts/AuthContext'
 import { toast } from 'sonner'
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
+import {
+  Plus,
+  Edit,
+  Trash2,
   MoreHorizontal,
   Clock,
   DollarSign,
@@ -68,7 +70,7 @@ const categoryReverseMapping: Record<string, string> = {
 
 const categories = {
   banho_tosa: 'Banho & Tosa',
-  adestramento: 'Adestramento', 
+  adestramento: 'Adestramento',
   veterinario: 'Veterinário',
   hospedagem: 'Hospedagem'
 }
@@ -115,6 +117,7 @@ interface Provider {
   name: string
   category: string
   description?: string
+  banner?: string
   servicesCount?: number
   address?: string
   addressNumber?: string
@@ -159,6 +162,7 @@ export function ProServices() {
         name: p.name,
         category: p.category,
         description: p.description,
+        banner: (p as any).banner,
         servicesCount: p.servicesCount,
         address: (p as any).address,
         addressNumber: (p as any).addressNumber,
@@ -225,13 +229,8 @@ export function ProServices() {
     fetchData()
   }, [user])
 
-  // Filtrar services por provider selecionado
-  const filteredServices = selectedProviderId 
-    ? services.filter(s => {
-        // Buscar service no backend para verificar providerId
-        // Por enquanto, mostrar todos e filtrar depois quando tiver providerId no frontend
-        return true
-      })
+  const filteredServices = selectedProviderId
+    ? services.filter((s) => s.providerId === selectedProviderId)
     : services
 
   const formatPrice = (cents: number) => {
@@ -247,6 +246,7 @@ export function ProServices() {
         name: providerData.name || '',
         category: providerData.category || 'OTHER',
         description: providerData.description,
+        banner: (providerData as any)?.banner || undefined,
         offersDelivery: (providerData as any)?.offersDelivery || false,
         offersHomeService: (providerData as any)?.offersHomeService || false,
         // Salvar os flags
@@ -293,7 +293,7 @@ export function ProServices() {
           toast.error(result.error || 'Erro ao criar serviço')
         }
       }
-      
+
       setEditingProvider(null)
       setIsProviderDialogOpen(false)
     } catch (err) {
@@ -313,7 +313,7 @@ export function ProServices() {
       if (editingService) {
         const result = await servicesService.update(editingService.id, backendData)
         if (result.success && result.data) {
-          setServices(services.map(s => 
+          setServices(services.map(s =>
             s.id === editingService.id ? mapBackendToFrontend(result.data!) : s
           ))
           // Recarregar providers para atualizar o contador
@@ -333,7 +333,7 @@ export function ProServices() {
           toast.error(result.error || 'Erro ao criar serviço')
         }
       }
-      
+
       setEditingService(null)
       setIsServiceDialogOpen(false)
     } catch (err) {
@@ -367,7 +367,7 @@ export function ProServices() {
 
     try {
       const result = await servicesService.delete(serviceId)
-      
+
       if (result.success) {
         setServices(services.filter(s => s.id !== serviceId))
         // Recarregar providers para atualizar o contador
@@ -387,9 +387,9 @@ export function ProServices() {
 
     try {
       const result = await servicesService.toggleActive(serviceId, !service.active)
-      
+
       if (result.success && result.data) {
-        setServices(services.map(s => 
+        setServices(services.map(s =>
           s.id === serviceId ? mapBackendToFrontend(result.data!) : s
         ))
         toast.success(`Item ${!service.active ? 'ativado' : 'desativado'} com sucesso!`)
@@ -421,21 +421,23 @@ export function ProServices() {
   }
 
   return (
-    <div className="w-full min-w-0 p-4 sm:p-6 lg:p-10 space-y-6 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-semibold">Meus Serviços</h2>
-          <p className="text-sm text-muted-foreground mt-1">Gerencie serviços e itens da sua empresa</p>
+    <div
+      className="w-full min-w-0 max-w-7xl mx-auto overflow-x-hidden p-3 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:p-6 lg:p-10 space-y-5 sm:space-y-6"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+        <div className="min-w-0">
+          <h2 className="text-xl sm:text-2xl font-semibold break-words">Meus Serviços</h2>
+          <p className="text-sm text-muted-foreground mt-1 break-words">Gerencie serviços e itens da sua empresa</p>
         </div>
       </div>
 
       {/* Seção de Providers */}
-      <Card>
-        <CardHeader className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-            <div>
-              <CardTitle>Serviços oferecidos</CardTitle>
-              <CardDescription>
+      <Card className="min-w-0 overflow-hidden">
+        <CardHeader className="p-3 sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+            <div className="min-w-0">
+              <CardTitle className="text-lg sm:text-xl break-words">Serviços oferecidos</CardTitle>
+              <CardDescription className="break-words">
                 {providers.length} serviço(s) cadastrado(s)
               </CardDescription>
             </div>
@@ -451,7 +453,7 @@ export function ProServices() {
                   Novo Serviço
                 </Button>
               </DialogTrigger>
-              <ProviderDialog 
+              <ProviderDialog
                 provider={editingProvider}
                 companyData={companyData}
                 onSave={handleSaveProvider}
@@ -463,15 +465,15 @@ export function ProServices() {
             </Dialog>
           </div>
         </CardHeader>
-        <CardContent className="p-4 sm:p-6 overflow-hidden">
+        <CardContent className="p-3 sm:p-6 overflow-hidden">
           {providers.length === 0 ? (
             <div className="text-center py-10">
               <p className="text-muted-foreground">Nenhum serviço cadastrado ainda.</p>
               <p className="text-sm text-muted-foreground mt-2">
                 Crie um serviço primeiro para depois adicionar itens
               </p>
-              <Button 
-                className="mt-4" 
+              <Button
+                className="mt-4"
                 onClick={() => setIsProviderDialogOpen(true)}
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -479,22 +481,25 @@ export function ProServices() {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {providers.map((provider) => (
-                <Card key={provider.id} className="cursor-pointer hover:border-aumigo-orange transition-colors"
+                <Card
+                  key={provider.id}
+                  className={`min-w-0 cursor-pointer transition-colors hover:border-aumigo-orange ${selectedProviderId === provider.id ? 'ring-2 ring-aumigo-orange/50 border-aumigo-orange/40' : ''
+                    }`}
                   onClick={() => setSelectedProviderId(selectedProviderId === provider.id ? null : provider.id)}
                 >
-                  <CardHeader className="p-4 sm:p-6">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
-                      <div>
-                        <CardTitle className="text-lg">{provider.name}</CardTitle>
-                        <Badge variant="outline" className="mt-2">
+                  <CardHeader className="space-y-0 p-3 sm:p-6">
+                    <div className="flex flex-row items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <CardTitle className="text-base sm:text-lg break-words pr-1">{provider.name}</CardTitle>
+                        <Badge variant="outline" className="mt-2 max-w-full whitespace-normal text-left h-auto py-1">
                           {serviceCategoryLabels[provider.category] || provider.category}
                         </Badge>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" className="h-8 w-8 p-0 shrink-0">
+                          <Button variant="ghost" className="h-9 w-9 shrink-0 touch-manipulation" aria-label="Mais opções">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -507,7 +512,7 @@ export function ProServices() {
                             <Edit className="w-4 h-4 mr-2" />
                             Editar
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation()
                               handleDeleteProvider(provider.id)
@@ -521,12 +526,17 @@ export function ProServices() {
                       </DropdownMenu>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-4 sm:p-6">
+                  <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                    {provider.banner ? (
+                      <div className="mb-2 aspect-video w-full max-h-28 overflow-hidden rounded-lg border bg-muted/40 sm:max-h-none sm:aspect-[2/1]">
+                        <img src={provider.banner} alt="" className="h-full w-full object-cover" />
+                      </div>
+                    ) : null}
                     {provider.description && (
-                      <p className="text-sm text-muted-foreground mb-2">{provider.description}</p>
+                      <p className="text-sm text-muted-foreground mb-2 break-words line-clamp-3">{provider.description}</p>
                     )}
-                    <p className="text-sm text-muted-foreground">
-                      {provider.servicesCount || 0} serviço(s) cadastrado(s)
+                    <p className="text-xs text-muted-foreground sm:text-sm">
+                      Toque para filtrar itens · {provider.servicesCount || 0} item(ns)
                     </p>
                   </CardContent>
                 </Card>
@@ -537,15 +547,26 @@ export function ProServices() {
       </Card>
 
       {/* Seção de Services */}
-      <Card>
-        <CardHeader className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-            <div>
-              <CardTitle>Catálogo de Itens de Serviço</CardTitle>
-              <CardDescription>
-                {filteredServices.length} serviço(s) cadastrado(s), {filteredServices.filter(s => s.active).length} ativo(s)
-                {selectedProviderId && ` (filtrado por serviço)`}
+      <Card className="min-w-0 overflow-hidden">
+        <CardHeader className="p-3 sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+            <div className="min-w-0 space-y-2">
+              <CardTitle className="text-lg sm:text-xl break-words">Catálogo de Itens</CardTitle>
+              <CardDescription className="break-words">
+                {filteredServices.length} item(ns), {filteredServices.filter((s) => s.active).length} ativo(s)
+                {selectedProviderId ? ' · filtrado' : ''}
               </CardDescription>
+              {selectedProviderId ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto touch-manipulation"
+                  onClick={() => setSelectedProviderId(null)}
+                >
+                  Limpar filtro
+                </Button>
+              ) : null}
             </div>
             <Dialog open={isServiceDialogOpen} onOpenChange={(open) => {
               setIsServiceDialogOpen(open)
@@ -554,7 +575,7 @@ export function ProServices() {
               }
             }}>
               <DialogTrigger asChild>
-                <Button 
+                <Button
                   className="w-full sm:w-auto"
                   onClick={() => {
                     setEditingService(null)
@@ -569,7 +590,7 @@ export function ProServices() {
                   Novo Item
                 </Button>
               </DialogTrigger>
-              <ServiceDialog 
+              <ServiceDialog
                 service={editingService}
                 providers={providers}
                 onSave={handleSaveService}
@@ -581,7 +602,7 @@ export function ProServices() {
             </Dialog>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 pb-3 pt-0 sm:px-6 sm:pb-6">
           {filteredServices.length === 0 ? (
             <div className="text-center py-10">
               <p className="text-muted-foreground">Nenhum serviço cadastrado ainda.</p>
@@ -590,8 +611,8 @@ export function ProServices() {
                   Crie um provider primeiro para depois adicionar serviços
                 </p>
               ) : (
-                <Button 
-                  className="mt-4" 
+                <Button
+                  className="mt-4"
                   onClick={() => setIsServiceDialogOpen(true)}
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -600,110 +621,179 @@ export function ProServices() {
               )}
             </div>
           ) : (
-          <div className="overflow-x-auto -mx-2 sm:mx-0">
-          <Table className="min-w-[640px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Item</TableHead>
-                <TableHead>Serviço</TableHead>
-                <TableHead>Preço</TableHead>
-                <TableHead>Duração</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredServices.map((service) => (
-                <TableRow key={service.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      {service.imageUrl && (
-                        <ImageWithFallback
-                          src={service.imageUrl}
-                          alt={service.title}
-                          width={48}
-                          height={48}
-                          className="rounded-lg object-cover"
-                        />
-                      )}
-                      <div>
-                        <p className="font-medium">{service.title}</p>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {service.description && service.description.length > 50
-                            ? `${service.description.substring(0, 50)}...`
-                            : service.description}
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">
-                      {(() => {
-                        const provider = providers.find(p => p.id === service.providerId)
-                        return provider?.name || 'N/A'
-                      })()}
-                    </Badge>
-                  </TableCell>
-              
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <DollarSign className="w-3 h-3" />
-                      {formatPrice(service.price)}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {service.duration}min
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        checked={service.active}
-                        onCheckedChange={() => toggleActive(service.id)}
-                      />
-                      {service.active ? (
-                        <Eye className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <EyeOff className="w-4 h-4 text-muted-foreground" />
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={(e) => {
-                            e.stopPropagation()
-                            setEditingService(service)
-                            setIsServiceDialogOpen(true)
-                          }}>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDelete(service.id)
-                            }}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          </div>
+            <>
+              <div className="catalog-items-mobile space-y-3">
+                {filteredServices.map((service) => {
+                  const provider = providers.find(p => p.id === service.providerId)
+                  return (
+                    <Card key={service.id} className="border border-border/70">
+                      <CardContent className="p-3 space-y-3">
+                        <div className="flex items-start gap-3">
+                          {service.imageUrl ? (
+                            <ImageWithFallback
+                              src={service.imageUrl}
+                              alt={service.title}
+                              width={56}
+                              height={56}
+                              className="rounded-lg object-cover shrink-0"
+                            />
+                          ) : null}
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium leading-tight">{service.title}</p>
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                              {service.description || 'Sem descrição'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="secondary" className="max-w-full truncate font-normal">
+                            {provider?.name || 'N/A'}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">{formatPrice(service.price)}</span>
+                          <span className="text-sm text-muted-foreground">{service.duration} min</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={service.active}
+                              onCheckedChange={() => toggleActive(service.id)}
+                            />
+                            <span className="text-sm">{service.active ? 'Ativo' : 'Inativo'}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2"
+                              onClick={() => {
+                                setEditingService(service)
+                                setIsServiceDialogOpen(true)
+                              }}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 text-destructive"
+                              onClick={() => handleDelete(service.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+              <div className="catalog-items-desktop overflow-x-auto -mx-2 md:mx-0">
+                <Table className="min-w-[640px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead>Serviço</TableHead>
+                      <TableHead>Preço</TableHead>
+                      <TableHead>Duração</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredServices.map((service) => (
+                      <TableRow key={service.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            {service.imageUrl && (
+                              <ImageWithFallback
+                                src={service.imageUrl}
+                                alt={service.title}
+                                width={48}
+                                height={48}
+                                className="rounded-lg object-cover"
+                              />
+                            )}
+                            <div>
+                              <p className="font-medium">{service.title}</p>
+                              <p className="text-sm text-muted-foreground line-clamp-2">
+                                {service.description && service.description.length > 50
+                                  ? `${service.description.substring(0, 50)}...`
+                                  : service.description}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">
+                            {(() => {
+                              const provider = providers.find(p => p.id === service.providerId)
+                              return provider?.name || 'N/A'
+                            })()}
+                          </Badge>
+                        </TableCell>
+
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <DollarSign className="w-3 h-3" />
+                            {formatPrice(service.price)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {service.duration}min
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={service.active}
+                              onCheckedChange={() => toggleActive(service.id)}
+                            />
+                            {service.active ? (
+                              <Eye className="w-4 h-4 text-green-600" />
+                            ) : (
+                              <EyeOff className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation()
+                                setEditingService(service)
+                                setIsServiceDialogOpen(true)
+                              }}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDelete(service.id)
+                                }}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -727,6 +817,7 @@ function ProviderDialog({ provider, companyData, onSave, onClose }: ProviderDial
         name: provider.name || '',
         category: provider.category || 'OTHER',
         description: provider.description || '',
+        banner: (provider as any)?.banner || '',
         address: (provider as any)?.address || '',
         addressNumber: (provider as any)?.addressNumber || '',
         city: (provider as any)?.city || '',
@@ -744,6 +835,7 @@ function ProviderDialog({ provider, companyData, onSave, onClose }: ProviderDial
         name: '',
         category: 'OTHER',
         description: '',
+        banner: '',
         address: '',
         addressNumber: '',
         city: '',
@@ -773,6 +865,7 @@ function ProviderDialog({ provider, companyData, onSave, onClose }: ProviderDial
         name: provider.name || '',
         category: provider.category || 'OTHER',
         description: provider.description || '',
+        banner: (provider as any)?.banner || '',
         address: (provider as any)?.address || '',
         addressNumber: (provider as any)?.addressNumber || '',
         city: (provider as any)?.city || '',
@@ -800,21 +893,43 @@ function ProviderDialog({ provider, companyData, onSave, onClose }: ProviderDial
   }
 
   return (
-    <DialogContent className="max-h-[90vh] overflow-y-auto">
-      <DialogHeader>
-        <DialogTitle>
+    <DialogContent
+      className="left-[50%] top-4 w-[95vw] max-w-[95vw] translate-x-[-50%] translate-y-0 overflow-y-auto overflow-x-hidden p-3 sm:top-[50%] sm:w-[min(100vw-0.75rem,72rem)] sm:max-w-4xl sm:translate-y-[-50%] sm:p-5 lg:max-w-5xl lg:p-6"
+      style={{ maxHeight: '90vh', maxWidth: '600px', WebkitOverflowScrolling: 'touch' as any }}
+      onPointerDownOutside={(e) => {
+        const target = (e as any)?.target as HTMLElement | null
+        if (target?.closest?.('.photo-crop-portal-overlay, .photo-crop-portal-card')) {
+          e.preventDefault()
+        }
+      }}
+      onInteractOutside={(e) => {
+        const target = (e as any)?.target as HTMLElement | null
+        if (target?.closest?.('.photo-crop-portal-overlay, .photo-crop-portal-card')) {
+          e.preventDefault()
+        }
+      }}
+      onFocusOutside={(e) => {
+        const target = (e as any)?.target as HTMLElement | null
+        if (target?.closest?.('.photo-crop-portal-overlay, .photo-crop-portal-card')) {
+          e.preventDefault()
+        }
+      }}
+    >
+      <DialogHeader className="min-w-0 shrink-0 pr-8 text-left">
+        <DialogTitle className="break-words">
           {provider ? 'Editar Serviço' : 'Novo Serviço'}
         </DialogTitle>
-        <DialogDescription>
+        <DialogDescription className="break-words">
           Crie um serviço para organizar seus itens por tipo
         </DialogDescription>
       </DialogHeader>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
+      <form onSubmit={handleSubmit} className="space-y-4 pb-2">
+        <div className="min-w-0">
           <Label htmlFor="provider-name">Nome do Serviço</Label>
           <Input
             id="provider-name"
+            className="min-w-0"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder="Ex: Banho & Tosa, Farmácia, Passeios..."
@@ -822,13 +937,13 @@ function ProviderDialog({ provider, companyData, onSave, onClose }: ProviderDial
           />
         </div>
 
-        <div>
+        <div className="min-w-0">
           <Label htmlFor="provider-category">Categoria</Label>
           <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full min-w-0">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent position="popper" sideOffset={6} className="max-h-[min(70vh,22rem)] w-[var(--radix-select-trigger-width)]">
               {Object.entries(serviceCategoryLabels).map(([key, label]) => (
                 <SelectItem key={key} value={key}>{label}</SelectItem>
               ))}
@@ -847,147 +962,161 @@ function ProviderDialog({ provider, companyData, onSave, onClose }: ProviderDial
           />
         </div>
 
+        <ServiceBannerCropField
+          value={(formData as any).banner}
+          onChange={(url) => setFormData((prev) => ({ ...prev, banner: url }))}
+          onRemove={() => setFormData((prev) => ({ ...prev, banner: '' }))}
+          uploadType="SERVICE_IMAGE"
+          uploadDescription="Banner do serviço"
+          outputSize={{ width: 1280, height: 720 }}
+          defaultFileName="provider-banner.jpg"
+        />
+
         {/* Checkbox para usar endereço da empresa */}
-        <div className="flex items-center space-x-2 pb-2 border-b">
+        <div className="flex items-start gap-2 pb-2 border-b">
           <Switch
             id="use-company-address"
+            className="mt-0.5 shrink-0"
             checked={useCompanyAddress}
             onCheckedChange={(checked) => {
               setUseCompanyAddress(checked)
             }}
           />
-          <Label htmlFor="use-company-address" className="font-medium">
+          <Label htmlFor="use-company-address" className="text-sm font-medium leading-snug">
             Usar endereço da empresa
           </Label>
         </div>
 
         {/* Campos de Localização - Mostrar apenas se NÃO usar dados da empresa */}
         {!useCompanyAddress && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <Label htmlFor="provider-zipCode">CEP</Label>
-              <Input
-                id="provider-zipCode"
-                value={formData.zipCode}
-                onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
-                placeholder="00000-000"
-              />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <Label htmlFor="provider-zipCode">CEP</Label>
+                <Input
+                  id="provider-zipCode"
+                  value={formData.zipCode}
+                  onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
+                  placeholder="00000-000"
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="provider-address">Endereço</Label>
-              <Input
-                id="provider-address"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                placeholder="Rua, Avenida, etc."
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="provider-address">Endereço</Label>
+                <Input
+                  id="provider-address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="Rua, Avenida, etc."
+                />
+              </div>
+              <div>
+                <Label htmlFor="provider-address-number">Número</Label>
+                <Input
+                  id="provider-address-number"
+                  value={formData.addressNumber || ''}
+                  onChange={(e) => setFormData({ ...formData, addressNumber: e.target.value })}
+                  placeholder="Número"
+                />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="provider-address-number">Número</Label>
-              <Input
-                id="provider-address-number"
-                value={formData.addressNumber || ''}
-                onChange={(e) => setFormData({ ...formData, addressNumber: e.target.value })}
-                placeholder="Número"
-              />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="provider-city">Cidade</Label>
-              <Input
-                id="provider-city"
-                value={formData.city}
-                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                placeholder="Cidade"
-              />
-            </div>
-            <div>
-              <Label htmlFor="provider-state">Estado</Label>
-              <Input
-                id="provider-state"
-                value={formData.state}
-                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                placeholder="Estado (ex: SP, RJ)"
-                maxLength={2}
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="provider-city">Cidade</Label>
+                <Input
+                  id="provider-city"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  placeholder="Cidade"
+                />
+              </div>
+              <div>
+                <Label htmlFor="provider-state">Estado</Label>
+                <Input
+                  id="provider-state"
+                  value={formData.state}
+                  onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                  placeholder="Estado (ex: SP, RJ)"
+                  maxLength={2}
+                />
+              </div>
             </div>
           </div>
-        </div>
         )}
 
         {/* Checkbox para usar contato da empresa */}
-        <div className="flex items-center space-x-2 pb-2 border-b pt-4">
+        <div className="flex items-start gap-2 pb-2 border-b pt-4">
           <Switch
             id="use-company-contact"
+            className="mt-0.5 shrink-0"
             checked={useCompanyContact}
             onCheckedChange={(checked) => {
               setUseCompanyContact(checked)
             }}
           />
-          <Label htmlFor="use-company-contact" className="font-medium">
+          <Label htmlFor="use-company-contact" className="text-sm font-medium leading-snug">
             Usar contato da empresa
           </Label>
         </div>
 
         {/* Campos de Contato - Mostrar apenas se NÃO usar dados da empresa */}
         {!useCompanyContact && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="provider-phone">Telefone</Label>
-              <Input
-                id="provider-phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="(11) 99999-9999"
-              />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="provider-phone">Telefone</Label>
+                <Input
+                  id="provider-phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
+              <div>
+                <Label htmlFor="provider-email">Email</Label>
+                <Input
+                  id="provider-email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="contato@exemplo.com"
+                />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="provider-email">Email</Label>
-              <Input
-                id="provider-email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="contato@exemplo.com"
-              />
-            </div>
-          </div>
 
-          <div>
-            <Label htmlFor="provider-website">Website (opcional)</Label>
-            <Input
-              id="provider-website"
-              value={formData.website}
-              onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-              placeholder="https://www.exemplo.com"
-            />
+            <div>
+              <Label htmlFor="provider-website">Website (opcional)</Label>
+              <Input
+                id="provider-website"
+                value={formData.website}
+                onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                placeholder="https://www.exemplo.com"
+              />
+            </div>
           </div>
-        </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="flex items-center space-x-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start">
+          <div className="flex items-start gap-2">
             <Switch
               id="provider-offersDelivery"
+              className="mt-0.5 shrink-0"
               checked={formData.offersDelivery}
               onCheckedChange={(checked) => setFormData({ ...formData, offersDelivery: checked })}
             />
-            <Label htmlFor="provider-offersDelivery">Oferece entrega</Label>
+            <Label htmlFor="provider-offersDelivery" className="text-sm leading-snug">Oferece entrega</Label>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-start gap-2">
             <Switch
               id="provider-offersHomeService"
+              className="mt-0.5 shrink-0"
               checked={formData.offersHomeService}
               onCheckedChange={(checked) => setFormData({ ...formData, offersHomeService: checked })}
             />
-            <Label htmlFor="provider-offersHomeService">Oferece atendimento domiciliar</Label>
+            <Label htmlFor="provider-offersHomeService" className="text-sm leading-snug">Atendimento domiciliar</Label>
           </div>
         </div>
 
@@ -1021,7 +1150,7 @@ function ServiceDialog({ service, providers, onSave, onClose }: ServiceDialogPro
     active: service?.active ?? true,
     imageUrl: service?.imageUrl || ''
   })
-  
+
   // Atualizar formData quando o service mudar (edição)
   useEffect(() => {
     if (service) {
@@ -1049,12 +1178,12 @@ function ServiceDialog({ service, providers, onSave, onClose }: ServiceDialogPro
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!formData.providerId) {
       toast.error('Selecione um provider')
       return
     }
-    
+
     onSave({
       providerId: formData.providerId,
       title: formData.title,
@@ -1067,124 +1196,128 @@ function ServiceDialog({ service, providers, onSave, onClose }: ServiceDialogPro
   }
 
   return (
-    <DialogContent className="max-w-2xl max-h-[90vh] sm:max-h-[85vh] flex flex-col overflow-hidden p-4 sm:p-6">
-      <DialogHeader className="flex-shrink-0">
-        <DialogTitle>
-          {service ? 'Editar Item' : 'Novo Item'}
-        </DialogTitle>
-        <DialogDescription>
+    <DialogContent
+      className="left-[50%] top-4 flex w-[95vw] max-w-[95vw] translate-x-[-50%] translate-y-0 flex-col overflow-hidden p-3 sm:top-[50%] sm:w-[min(100vw-0.75rem,72rem)] sm:max-w-4xl sm:translate-y-[-50%] sm:p-5 lg:max-w-5xl lg:p-6"
+      style={{ maxHeight: '90vh', maxWidth: '600px', WebkitOverflowScrolling: 'touch' as any }}
+    >
+      <DialogHeader className="min-w-0 shrink-0 pr-8 text-left">
+        <DialogTitle className="break-words">{service ? 'Editar Item' : 'Novo Item'}</DialogTitle>
+        <DialogDescription className="break-words">
           Preencha as informações do seu serviço
         </DialogDescription>
       </DialogHeader>
 
       <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
         <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1 -mr-1">
-        <div>
-          <Label htmlFor="provider">
-            Serviço <span className="text-red-500">*</span>
-          </Label>
-          <Select 
-            value={formData.providerId} 
-            onValueChange={(value) => setFormData({ ...formData, providerId: value })}
-            required
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione um serviço" />
-            </SelectTrigger>
-            <SelectContent>
-              {providers.map((provider) => (
-                <SelectItem key={provider.id} value={provider.id}>
-                  {provider.name} ({serviceCategoryLabels[provider.category] || provider.category})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground mt-1">
-            Selecione o serviço que oferece este item
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4">
           <div>
-            <Label htmlFor="title">Título do Item</Label>
-            <Input
-              id="title"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Ex: Cabine 1 - Banho Completo"
+            <Label htmlFor="provider">
+              Serviço <span className="text-red-500">*</span>
+            </Label>
+            <Select
+              value={formData.providerId}
+              onValueChange={(value) => setFormData({ ...formData, providerId: value })}
               required
+            >
+              <SelectTrigger className="w-full min-w-0">
+                <SelectValue placeholder="Selecione um serviço" />
+              </SelectTrigger>
+              <SelectContent position="popper" sideOffset={6} className="max-h-[min(70vh,22rem)] w-[var(--radix-select-trigger-width)]">
+                {providers.map((provider) => (
+                  <SelectItem key={provider.id} value={provider.id}>
+                    <span className="line-clamp-2 break-words text-left">
+                      {provider.name} ({serviceCategoryLabels[provider.category] || provider.category})
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Selecione o serviço que oferece este item
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <Label htmlFor="title">Título do Item</Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="Ex: Cabine 1 - Banho Completo"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="description">Descrição</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Descreva detalhadamente seu item..."
+              rows={3}
             />
           </div>
-        </div>
 
-        <div>
-          <Label htmlFor="description">Descrição</Label>
-          <Textarea
-            id="description"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            placeholder="Descreva detalhadamente seu item..."
-            rows={3}
+          {/* Foto do serviço — mesmo componente do app (PetForm) */}
+          <PhotoCropUpload
+            value={formData.imageUrl}
+            onUploaded={(url) => setFormData((prev) => ({ ...prev, imageUrl: url }))}
+            onRemove={() => setFormData((prev) => ({ ...prev, imageUrl: '' }))}
+            uploadType="SERVICE_IMAGE"
+            uploadDescription="Foto do serviço"
+            loadingMessage="Enviando foto do serviço..."
+            successMessage="Foto do serviço adicionada!"
+            modalTitle="Cortar foto do serviço"
+            modalSubtitle="Ajuste a área de corte. A foto será quadrada. Arraste para mover e use o zoom."
+            confirmButtonText="Cortar e usar"
+            sectionTitle="Foto do serviço"
+            sectionDescription="Imagem do produto/serviço. Máximo 5MB."
+            fallbackLabel="?"
+            variant="product"
+            defaultFileName="service-photo.jpg"
           />
-        </div>
 
-      {/* Foto do serviço — mesmo componente do app (PetForm) */}
-        <PhotoCropUpload
-          value={formData.imageUrl}
-          onUploaded={(url) => setFormData((prev) => ({ ...prev, imageUrl: url }))}
-          onRemove={() => setFormData((prev) => ({ ...prev, imageUrl: '' }))}
-          uploadType="SERVICE_IMAGE"
-          uploadDescription="Foto do serviço"
-          loadingMessage="Enviando foto do serviço..."
-          successMessage="Foto do serviço adicionada!"
-          modalTitle="Cortar foto do serviço"
-          modalSubtitle="Ajuste a área de corte. A foto será quadrada. Arraste para mover e use o zoom."
-          confirmButtonText="Cortar e usar"
-          sectionTitle="Foto do serviço"
-          sectionDescription="Imagem do produto/serviço. Máximo 5MB."
-          fallbackLabel="?"
-          variant="product"
-          defaultFileName="service-photo.jpg"
-        />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="price">Preço (R$)</Label>
+              <Input
+                id="price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.price}
+                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                placeholder="0,00"
+                required
+              />
+            </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="price">Preço (R$)</Label>
-            <Input
-              id="price"
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-              placeholder="0,00"
-              required
-            />
+            <div>
+              <Label htmlFor="duration">Duração (minutos)</Label>
+              <Input
+                id="duration"
+                type="number"
+                min="15"
+                step="15"
+                value={formData.duration}
+                onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                placeholder="60"
+                required
+              />
+            </div>
           </div>
-          
-          <div>
-            <Label htmlFor="duration">Duração (minutos)</Label>
-            <Input
-              id="duration"
-              type="number"
-              min="15"
-              step="15"
-              value={formData.duration}
-              onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-              placeholder="60"
-              required
-            />
-          </div>
-        </div>
 
-        <div className="flex items-center space-x-2">
-          <Switch
-            id="active"
-            checked={formData.active}
-            onCheckedChange={(checked) => setFormData({ ...formData, active: checked })}
-          />
-          <Label htmlFor="active">Item ativo (visível para clientes)</Label>
-        </div>
+          <div className="flex items-start gap-2">
+            <Switch
+              id="active"
+              className="mt-0.5 shrink-0"
+              checked={formData.active}
+              onCheckedChange={(checked) => setFormData({ ...formData, active: checked })}
+            />
+            <Label htmlFor="active" className="text-sm leading-snug">Item ativo (visível para clientes)</Label>
+          </div>
         </div>
 
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 flex-shrink-0 pt-4 mt-4 border-t">

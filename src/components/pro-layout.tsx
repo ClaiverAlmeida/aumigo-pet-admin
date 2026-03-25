@@ -47,7 +47,7 @@ const navigationItems = [
   // { id: 'ads', label: 'ADS (Impulsionar)', icon: Megaphone },
   { id: 'finance', label: 'Financeiro', icon: DollarSign },
   { id: 'reviews', label: 'Avaliações', icon: Star },
-  // { id: 'chat', label: 'Chat', icon: MessageSquare },
+  { id: 'chat', label: 'Conversas', icon: MessageSquare },
   { id: 'notifications', label: 'Notificações', icon: Bell },
   { id: 'settings', label: 'Configurações', icon: Settings },
 ]

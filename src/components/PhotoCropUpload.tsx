@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Upload, Trash2 } from 'lucide-react'
 import Cropper, { type Area } from 'react-easy-crop'
 import 'react-easy-crop/react-easy-crop.css'
+import './PhotoCropUpload.portal.css'
 import { toast } from 'sonner'
 import { Label } from './ui/label'
 import { Button } from './ui/button'
@@ -26,8 +28,16 @@ export interface PhotoCropUploadProps {
   triggerClassName?: string
   triggerStyle?: React.CSSProperties
   defaultFileName?: string
-  /** Se true, usa área quadrada para produto/serviço em vez de avatar redondo */
-  variant?: 'avatar' | 'product'
+  /** Preview/crop: avatar (1:1), product (1:1) ou banner (preview 16:9). */
+  variant?: 'avatar' | 'product' | 'banner'
+  /** Opcional. Força a proporção do recorte. Default: 1 */
+  cropAspect?: number
+  /** Opcional. Força tamanho do arquivo final (ex.: 1280x720). Default: 512x512 */
+  outputSize?: { width: number; height: number }
+  /** Opcional. Renderiza o modal em portal (fora de Dialog transform). Default: false */
+  usePortal?: boolean
+  /** Opcional. Fecha ao clicar no backdrop. Default: true */
+  closeOnBackdropClick?: boolean
 }
 
 const CROPPER_Z_INDEX_STYLES = `
@@ -73,8 +83,14 @@ export function PhotoCropUpload({
   triggerStyle,
   defaultFileName = 'photo.jpg',
   variant = 'avatar',
+  cropAspect,
+  outputSize,
+  usePortal = false,
+  closeOnBackdropClick = true,
 }: PhotoCropUploadProps) {
+  const resolvedCropAspect = cropAspect ?? (variant === 'banner' ? 16 / 9 : 1)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cropCardRef = useRef<HTMLDivElement | null>(null)
   const [showCropModal, setShowCropModal] = useState(false)
   const [imageToCrop, setImageToCrop] = useState<string | null>(null)
   const [crop, setCrop] = useState({ x: 0, y: 0 })
@@ -122,13 +138,17 @@ export function PhotoCropUpload({
     setIsUploadingImage(true)
     const loadingToast = toast.loading(loadingMessage)
     try {
-      const blob = await createCroppedImage(imageToCrop, croppedAreaPct)
+      const blob = await createCroppedImage(
+        imageToCrop,
+        croppedAreaPct,
+        outputSize ? { outputWidth: outputSize.width, outputHeight: outputSize.height } : 512
+      )
       const file = new File(
         [blob],
         defaultFileName.replace(/\.[^.]+$/, '.jpg') || 'photo.jpg',
         { type: 'image/jpeg' }
       )
-      const uploadResult = await filesService.upload(file, uploadType, uploadDescription)
+      const uploadResult = await filesService.upload(file as any, uploadType, uploadDescription)
       toast.dismiss(loadingToast)
       if (!uploadResult.success || !uploadResult.data) {
         throw new Error(uploadResult.error || 'Erro ao fazer upload')
@@ -146,76 +166,90 @@ export function PhotoCropUpload({
     }
   }
 
-  return (
-    <>
-      {showCropModal && imageToCrop && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
-          onClick={(e) => e.target === e.currentTarget && handleCropCancel()}
-        >
-          <div
-            className="bg-white rounded-xl shadow-xl w-full max-w-[500px] max-h-[90vh] overflow-hidden flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-4 pb-0 flex-shrink-0">
-              <h2 className="text-lg font-semibold text-gray-800">{modalTitle}</h2>
-              <p className="text-sm text-gray-600 mt-1">{modalSubtitle}</p>
-            </div>
-            <div
-              className="photo-crop-modal-cropper relative w-full flex-shrink-0 bg-black overflow-hidden"
-              style={{ height: 320, minHeight: 320 }}
+  const handleCropOverlayMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!closeOnBackdropClick) return
+    if (!cropCardRef.current) return
+    const nativeEvent = e.nativeEvent as unknown as { composedPath?: () => EventTarget[] }
+    const path = nativeEvent.composedPath?.() ?? []
+    const clickedInside = path.includes(cropCardRef.current)
+    if (!clickedInside) handleCropCancel()
+  }
+
+  const cropModalBody = showCropModal && imageToCrop ? (
+    <div
+      className={usePortal ? 'photo-crop-portal-overlay' : 'fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4'}
+      onMouseDown={handleCropOverlayMouseDown}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="photo-crop-title"
+    >
+      <div
+        ref={cropCardRef}
+        className={usePortal ? 'photo-crop-portal-card' : 'bg-white rounded-xl shadow-xl w-full max-w-[500px] max-h-[90vh] overflow-hidden flex flex-col'}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-4 pb-0 flex-shrink-0">
+          <h2 id="photo-crop-title" className="text-lg font-semibold text-gray-800">
+            {modalTitle}
+          </h2>
+          <p className="text-sm text-gray-600 mt-1">{modalSubtitle}</p>
+        </div>
+        <div className="photo-crop-modal-cropper relative w-full flex-shrink-0 bg-black overflow-hidden" style={{ height: 320, minHeight: 320 }}>
+          <style>{CROPPER_Z_INDEX_STYLES}</style>
+          <Cropper
+            key={imageToCrop}
+            image={imageToCrop}
+            crop={crop}
+            zoom={zoom}
+            aspect={resolvedCropAspect}
+            cropShape="rect"
+            showGrid
+            onCropChange={setCrop}
+            onZoomChange={setZoom}
+            onCropAreaChange={onCropAreaChange}
+            onCropComplete={onCropAreaChange}
+          />
+        </div>
+        <div className="p-4 space-y-4 flex-shrink-0">
+          <style>{ZOOM_SLIDER_STYLES}</style>
+          <div className="space-y-2">
+            <Label className="text-sm">Zoom</Label>
+            <input
+              type="range"
+              min={1}
+              max={3}
+              step={0.1}
+              value={zoom}
+              onChange={(e) => setZoom(Number(e.target.value))}
+              className="photo-crop-zoom-range w-full"
+              style={{ '--zoom-pct': `${((zoom - 1) / 2) * 100}%` } as React.CSSProperties}
+            />
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button
+              type="button"
+              onClick={handleCropCancel}
+              className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 font-medium"
             >
-              <style>{CROPPER_Z_INDEX_STYLES}</style>
-              <Cropper
-                key={imageToCrop}
-                image={imageToCrop}
-                crop={crop}
-                zoom={zoom}
-                aspect={1}
-                cropShape="rect"
-                showGrid
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onCropAreaChange={onCropAreaChange}
-                onCropComplete={onCropAreaChange}
-              />
-            </div>
-            <div className="p-4 space-y-4 flex-shrink-0">
-              <style>{ZOOM_SLIDER_STYLES}</style>
-              <div className="space-y-2">
-                <Label className="text-sm">Zoom</Label>
-                <input
-                  type="range"
-                  min={1}
-                  max={3}
-                  step={0.1}
-                  value={zoom}
-                  onChange={(e) => setZoom(Number(e.target.value))}
-                  className="photo-crop-zoom-range w-full"
-                  style={{ '--zoom-pct': `${((zoom - 1) / 2) * 100}%` } as React.CSSProperties}
-                />
-              </div>
-              <div className="flex gap-3 justify-end">
-                <button
-                  type="button"
-                  onClick={handleCropCancel}
-                  className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 font-medium"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCropConfirm}
-                  disabled={!croppedAreaPct || isUploadingImage}
-                  className="px-4 py-2 bg-aumigo-teal text-white rounded-xl font-medium hover:bg-aumigo-teal/90 disabled:opacity-50"
-                >
-                  {isUploadingImage ? 'Enviando...' : confirmButtonText}
-                </button>
-              </div>
-            </div>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleCropConfirm}
+              disabled={!croppedAreaPct || isUploadingImage}
+              className="px-4 py-2 bg-aumigo-teal text-white rounded-xl font-medium hover:bg-aumigo-teal/90 disabled:opacity-50"
+            >
+              {isUploadingImage ? 'Enviando...' : confirmButtonText}
+            </button>
           </div>
         </div>
-      )}
+      </div>
+    </div>
+  ) : null
+
+  return (
+    <>
+      {usePortal ? (cropModalBody && typeof document !== 'undefined' ? createPortal(cropModalBody, document.body) : null) : cropModalBody}
 
       <div className={`flex items-center gap-6 ${triggerClassName ?? ''}`} style={triggerStyle}>
         <div className="relative flex-shrink-0">
@@ -225,6 +259,14 @@ export function PhotoCropUpload({
                 <img src={value} alt="" className="w-full h-full object-cover" />
               ) : (
                 <span className="text-2xl text-muted-foreground font-medium">{fallbackLabel}</span>
+              )}
+            </div>
+          ) : variant === 'banner' ? (
+            <div className="w-48 h-28 rounded-xl border-2 border-border bg-muted/30 overflow-hidden flex items-center justify-center">
+              {value ? (
+                <img src={value} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-sm text-muted-foreground font-medium">{fallbackLabel}</span>
               )}
             </div>
           ) : (
@@ -239,10 +281,8 @@ export function PhotoCropUpload({
             ref={fileInputRef}
             type="file"
             accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
-            className="absolute -left-[9999px] w-0 h-0 p-0 m-0 border-0 opacity-0 overflow-hidden cursor-pointer min-w-0 min-h-0"
+            className="sr-only"
             onChange={handleFileChange}
-            aria-hidden
-            tabIndex={-1}
           />
         </div>
         <div className="flex-1 min-w-0">

@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react'
-import { NotificationCenter, useNotifications } from './notification-center'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { NotificationCenter, useNotifications, type Notification } from './notification-center'
 import { Button } from './ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Badge } from './ui/badge'
@@ -10,12 +10,37 @@ import {
   Filter,
   Archive,
   Trash2,
-  Download
+  Download,
+  Calendar,
+  Pill,
+  Star,
+  Syringe,
+  MessageSquare,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { notificationsService } from '../services/notifications.service'
+import { useRouter } from '../hooks/useRouter'
+import { obterRotaProPorTipoNotificacao } from '../utils/pro-notification-routes'
+
+type EntityFilterId = '' | 'booking' | 'reminder' | 'review' | 'vaccine' | 'chat'
+
+const ENTITY_FILTERS: { id: EntityFilterId; label: string; icon: typeof Bell }[] = [
+  { id: '', label: 'Todas', icon: Bell },
+  { id: 'booking', label: 'Agendamentos', icon: Calendar },
+  { id: 'reminder', label: 'Lembretes', icon: Pill },
+  { id: 'review', label: 'Avaliações', icon: Star },
+  { id: 'vaccine', label: 'Vacinas', icon: Syringe },
+  { id: 'chat', label: 'Mensagens', icon: MessageSquare },
+]
+
+const KNOWN_ENTITY_TYPES: EntityFilterId[] = ['booking', 'reminder', 'review', 'vaccine', 'chat']
+
+function isEntityFilterId(t: string): t is EntityFilterId {
+  return (KNOWN_ENTITY_TYPES as string[]).includes(t)
+}
 
 export function ProNotifications() {
+  const { navigate } = useRouter()
   const {
     notifications,
     historyNotifications,
@@ -29,9 +54,90 @@ export function ProNotifications() {
     unreadCount
   } = useNotifications()
 
+  const [readFilter, setReadFilter] = useState<'all' | 'unread' | 'read'>('all')
+  const [entityType, setEntityType] = useState<EntityFilterId>('')
+  const [initialEntityTypes, setInitialEntityTypes] = useState<EntityFilterId[]>([])
+
   useEffect(() => {
     loadHistory()
   }, [loadHistory])
+
+  useEffect(() => {
+    const semFiltro = readFilter === 'all' && !entityType
+    if (!semFiltro) return
+    const tipos = Array.from(
+      new Set(
+        notifications
+          .map((n) => n.entityType)
+          .filter((t): t is string => Boolean(t))
+          .filter(isEntityFilterId)
+      )
+    )
+    setInitialEntityTypes(tipos)
+  }, [notifications, entityType, readFilter])
+
+  const visibleEntityFilters = useMemo(() => {
+    const tiposNaLista = new Set(
+      notifications.map((n) => n.entityType).filter((t): t is string => Boolean(t))
+    )
+    const tiposBase = new Set(initialEntityTypes)
+    const tiposPresentes = tiposBase.size > 0 ? tiposBase : tiposNaLista
+    return ENTITY_FILTERS.filter((f) => {
+      if (f.id === '') return true
+      if (entityType === f.id) return true
+      return tiposPresentes.has(f.id)
+    })
+  }, [notifications, entityType, initialEntityTypes])
+
+  const filteredForCenter = useMemo(() => {
+    return notifications.filter((n) => {
+      if (readFilter === 'unread' && n.read) return false
+      if (readFilter === 'read' && !n.read) return false
+      if (entityType && n.entityType !== entityType) return false
+      return true
+    })
+  }, [notifications, readFilter, entityType])
+
+  const listEmptyMessage = useMemo(() => {
+    if (notifications.length === 0) return 'Nenhuma notificação'
+    if (filteredForCenter.length === 0) return 'Nenhum resultado para os filtros selecionados'
+    return undefined
+  }, [notifications.length, filteredForCenter.length])
+
+  const hasActiveFilters = readFilter !== 'all' || entityType !== ''
+
+  const handleReadFilterChange = (next: 'unread' | 'read') => {
+    setReadFilter((prev) => (prev === next ? 'all' : next))
+  }
+
+  const clearFilters = () => {
+    setReadFilter('all')
+    setEntityType('')
+  }
+
+  const PRO_CHAT_LOCAL_STORAGE_KEY = 'proChat:selectedTicketId'
+
+  const handleNotificationOpen = useCallback(
+    (n: Notification) => {
+      if (!n.read) {
+        void markAsRead(n.id)
+      }
+
+      // Notificação de mensagem (chat)
+      if (n.entityType === 'chat' && n.bookingId) {
+        try {
+          localStorage.setItem(PRO_CHAT_LOCAL_STORAGE_KEY, n.bookingId)
+        } catch {
+          // ignore
+        }
+        navigate('/pro/chat')
+        return
+      }
+
+      navigate(obterRotaProPorTipoNotificacao(n.entityType))
+    },
+    [markAsRead, navigate],
+  )
 
   const handleExportNotifications = async () => {
     toast.loading('Carregando histórico completo...')
@@ -67,7 +173,7 @@ export function ProNotifications() {
           <Badge className="bg-aumigo-orange text-white text-xs sm:text-sm">
             {unreadCount} não lidas
           </Badge>
-          <Button 
+          {/* <Button 
             variant="outline" 
             size="sm"
             className="border-aumigo-blue text-aumigo-blue hover:bg-aumigo-blue hover:text-white text-xs sm:text-sm"
@@ -76,7 +182,7 @@ export function ProNotifications() {
             <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
             <span className="hidden sm:inline">Exportar Histórico</span>
             <span className="sm:hidden">Exportar</span>
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -89,7 +195,7 @@ export function ProNotifications() {
               <span className="hidden sm:inline">Notificações</span>
               <span className="sm:hidden">Notif.</span>
             </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+            {/* <TabsTrigger value="settings" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
               <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Configurações</span>
               <span className="sm:hidden">Config.</span>
@@ -98,25 +204,101 @@ export function ProNotifications() {
               <Archive className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Histórico</span>
               <span className="sm:hidden">Hist.</span>
-            </TabsTrigger>
+            </TabsTrigger> */}
           </TabsList>
 
           <div className="flex-1 overflow-hidden">
             {/* Notifications Tab */}
             <TabsContent value="notifications" className="h-full">
-              <div className="flex justify-center h-full">
+              <div className="flex flex-col items-center h-full w-full max-w-md mx-auto gap-4">
                 {loading ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-aumigo-orange" />
                   </div>
                 ) : (
-                  <NotificationCenter
-                    notifications={notifications}
-                    onMarkAsRead={markAsRead}
-                    onMarkAllAsRead={markAllAsRead}
-                    onRemoveNotification={removeNotification}
-                    onClearAll={clearAll}
-                  />
+                  <>
+                    <div className="w-full rounded-lg border border-border bg-card p-4 space-y-4 shrink-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Status
+                        </p>
+                        {hasActiveFilters && (
+                          <button
+                            type="button"
+                            onClick={clearFilters}
+                            className="text-xs font-medium text-aumigo-blue hover:text-aumigo-blue/80"
+                          >
+                            Limpar filtros
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
+                        <button
+                          type="button"
+                          onClick={() => handleReadFilterChange('unread')}
+                          className={`h-10 rounded-lg text-sm font-medium transition-all ${
+                            readFilter === 'unread'
+                              ? 'bg-background text-foreground shadow-sm'
+                              : 'bg-transparent text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Não lidas
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleReadFilterChange('read')}
+                          className={`h-10 rounded-lg text-sm font-medium transition-all ${
+                            readFilter === 'read'
+                              ? 'bg-background text-foreground shadow-sm'
+                              : 'bg-transparent text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Lidas
+                        </button>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                          Tipo
+                        </p>
+                        <div className="-mx-1 overflow-x-auto px-1 pb-1">
+                          <div className="flex gap-2">
+                            {visibleEntityFilters.map((f) => {
+                              const Icon = f.icon
+                              const isActive =
+                                (f.id === '' && !entityType) || entityType === f.id
+                              return (
+                                <button
+                                  key={f.id || 'all'}
+                                  type="button"
+                                  onClick={() => setEntityType(f.id)}
+                                  className={`h-10 shrink-0 px-3 rounded-lg text-sm whitespace-nowrap flex items-center gap-2 transition-colors ${
+                                    isActive
+                                      ? 'bg-aumigo-orange text-white shadow-sm'
+                                      : 'bg-background border border-border text-foreground hover:bg-muted'
+                                  }`}
+                                >
+                                  <Icon className="h-4 w-4 shrink-0" />
+                                  {f.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <NotificationCenter
+                      notifications={filteredForCenter}
+                      onMarkAsRead={markAsRead}
+                      onMarkAllAsRead={markAllAsRead}
+                      onRemoveNotification={removeNotification}
+                      onClearAll={clearAll}
+                      showInlineFilters={false}
+                      totalUnreadCount={unreadCount}
+                      totalCountForFooter={notifications.length}
+                      emptyMessage={listEmptyMessage}
+                      onNotificationOpen={handleNotificationOpen}
+                    />
+                  </>
                 )}
               </div>
             </TabsContent>
@@ -253,7 +435,7 @@ export function ProNotifications() {
                       >
                         <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                         <span className="hidden sm:inline">Exportar CSV</span>
-                        <span className="sm:hidden">Exportar</span>
+                        <span className="sm:hidden">Exposdsdrtar</span>
                       </Button>
                     </div>
 

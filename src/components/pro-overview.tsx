@@ -6,24 +6,35 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Progress } from './ui/progress'
 import { Alert, AlertDescription } from './ui/alert'
 import { useRouter } from '../hooks/useRouter'
-import { bookingsService, type Booking } from '../services/bookings.service'
-import { serviceProvidersService } from '../services/service-providers.service'
-import { 
-  Calendar, 
-  DollarSign, 
-  Star, 
-  Users, 
+import {
+  bookingsService,
+  type Booking,
+  type CompanyOperationalDashboard,
+} from '../services/bookings.service'
+import {
+  DollarSign,
+  Star,
+  Users,
   Clock,
   TrendingUp,
+  TrendingDown,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
 } from 'lucide-react'
 
 const alerts: any[] = []
 
+function formatBRLFromCents(cents: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(cents / 100)
+}
+
 export function ProOverview() {
   const { navigate } = useRouter()
   const [loading, setLoading] = useState(true)
+  const [dashboard, setDashboard] = useState<CompanyOperationalDashboard | null>(null)
   const [kpisData, setKpisData] = useState({
     novosPedidos: 0,
     confirmadosHoje: 0,
@@ -40,87 +51,71 @@ export function ProOverview() {
     try {
       const today = new Date()
       const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-      const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59)
-      
-      const dateFrom = todayStart.toISOString().split('T')[0]
-      const dateTo = todayEnd.toISOString().split('T')[0]
+      const formatLocalYmd = (d: Date) => {
+        const y = d.getFullYear()
+        const m = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        return `${y}-${m}-${day}`
+      }
+      const dateFrom = formatLocalYmd(todayStart)
+      const dateTo = formatLocalYmd(todayStart)
 
-      // Buscar todos os bookings de hoje (qualquer status)
-      const bookingsTodayResult = await bookingsService.getAll({
-        dateFrom,
-        dateTo,
-        limit: 10
-      })
+      const [bookingsTodayResult, pendingBookingsResult, dashboardResult] = await Promise.all([
+        bookingsService.getAllByCompany({
+          dateFrom,
+          dateTo,
+          limit: 10,
+        }),
+        bookingsService.getAllByCompany({
+          status: 'PENDING',
+          limit: 100,
+        }),
+        bookingsService.getCompanyDashboard(),
+      ])
 
-      // Buscar novos pedidos (PENDING) - buscar com limite maior para contar
-      const pendingBookingsResult = await bookingsService.getAll({
-        status: 'PENDING',
-        limit: 100 // Limite razoável para contar
-      })
+      if (dashboardResult.success && dashboardResult.data) {
+        setDashboard(dashboardResult.data)
+        const r = dashboardResult.data.reviewsAllTime
+        if (r.count > 0 && r.averageRating != null) {
+          setKpisData((prev) => ({
+            ...prev,
+            notaMedia: String(r.averageRating),
+          }))
+        } else {
+          setKpisData((prev) => ({ ...prev, notaMedia: '-' }))
+        }
+      } else {
+        setDashboard(null)
+      }
 
-      // Buscar service providers para pegar nota média
-      const providersResult = await serviceProvidersService.list()
-
-      // Processar dados de agendamentos de hoje
       if (bookingsTodayResult.success && bookingsTodayResult.data) {
         const responseData = bookingsTodayResult.data as any
-        const bookings = Array.isArray(responseData) 
-          ? responseData 
+        const bookings = Array.isArray(responseData)
+          ? responseData
           : (responseData.data || [])
-        
-        const confirmedToday = bookings.length
-
-        // Transformar bookings para o formato esperado
         const transformedBookings = bookings.slice(0, 5).map((booking: Booking) => ({
           id: booking.id,
           time: booking.time || '00:00',
           service: booking.serviceName || booking.service?.name || 'Serviço',
           pet: booking.petName || booking.pet?.name || 'Pet',
           tutor: booking.customerName || booking.customer?.name || 'Cliente',
-          avatar: booking.customer?.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(booking.customerName || booking.customer?.name || 'Cliente')}&background=random`,
-          status: booking.status
+          avatar:
+            (booking.customer as { profilePicture?: string } | undefined)?.profilePicture ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(booking.customerName || booking.customer?.name || 'Cliente')}&background=random`,
+          status: booking.status,
         }))
-
         setUpcomingBookings(transformedBookings)
-        
-        // Contar apenas os confirmados para o KPI
         const confirmedCount = bookings.filter((b: Booking) => b.status === 'CONFIRMED').length
-        setKpisData(prev => ({ ...prev, confirmadosHoje: confirmedCount }))
+        setKpisData((prev) => ({ ...prev, confirmadosHoje: confirmedCount }))
       }
 
-      // Processar novos pedidos (PENDING)
       if (pendingBookingsResult.success && pendingBookingsResult.data) {
         const responseData = pendingBookingsResult.data as any
         const pendingBookings = Array.isArray(responseData)
           ? responseData
           : (responseData.data || [])
-        
-        // Se tiver paginação, usar total, senão contar array
         const novosPedidos = responseData.pagination?.total || pendingBookings.length
-        setKpisData(prev => ({ ...prev, novosPedidos }))
-      }
-
-      // Processar nota média dos providers
-      if (providersResult.success && providersResult.data) {
-        const responseData = providersResult.data as any
-        const providers = Array.isArray(responseData)
-          ? responseData
-          : (responseData.data || [])
-        
-        // Pegar a primeira nota média disponível (ou calcular média de todas)
-        if (providers.length > 0) {
-          const ratings = providers
-            .map((p: any) => {
-              const rating = p.averageRating || p.rating
-              return rating ? parseFloat(rating.toString()) : 0
-            })
-            .filter((r: number) => r > 0)
-          
-          if (ratings.length > 0) {
-            const avgRating = (ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length).toFixed(1)
-            setKpisData(prev => ({ ...prev, notaMedia: avgRating }))
-          }
-        }
+        setKpisData((prev) => ({ ...prev, novosPedidos }))
       }
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
@@ -129,45 +124,63 @@ export function ProOverview() {
     }
   }
 
-  // Calcular KPIs dinâmicos
+  const refMonth = dashboard?.referenceMonth
+  const performanceMonthLabel = refMonth
+    ? new Date(refMonth.year, refMonth.month - 1, 1).toLocaleDateString('pt-BR', {
+        month: 'long',
+        year: 'numeric',
+      })
+    : new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+
+  const netCents = dashboard?.paymentsCurrentMonthCents.net ?? 0
+  const grossCents = dashboard?.paymentsCurrentMonthCents.gross ?? 0
+  const platformFeeCents = dashboard?.paymentsCurrentMonthCents.platformFee ?? 0
+  const revDelta = dashboard?.deltas.revenueNetPercentVsPreviousMonth ?? null
+  const b = dashboard?.bookingsInMonth
+  const reviewsMonth = dashboard?.reviewsInMonth
+  const satisfactionPercent =
+    reviewsMonth && reviewsMonth.count > 0 && reviewsMonth.averageRating != null
+      ? Math.round((reviewsMonth.averageRating / 5) * 100)
+      : 0
+
   const kpis = [
     {
       title: 'Novos Pedidos',
       value: kpisData.novosPedidos.toString(),
-      change: '0',
-      changeType: 'increase' as const,
+      footnote: 'pendentes em aberto (empresa)',
       icon: Users,
-      color: 'text-blue-600'
+      color: 'text-blue-600',
     },
     {
       title: 'Confirmados Hoje',
       value: kpisData.confirmadosHoje.toString(),
-      change: '0',
-      changeType: 'increase' as const,
+      footnote: 'com data de hoje',
       icon: CheckCircle,
-      color: 'text-green-600'
+      color: 'text-green-600',
     },
     {
       title: 'Ganhos (Mês)',
-      value: 'R$ 0',
-      change: '0%',
-      changeType: 'increase' as const,
+      value: formatBRLFromCents(netCents),
+      footnote: 'Valor líquido (pagamentos pagos no mês)',
+      showTrend: revDelta !== null,
+      trendValue: revDelta,
       icon: DollarSign,
-      color: 'text-green-600'
+      color: 'text-green-600',
     },
     {
       title: 'Nota Média',
       value: kpisData.notaMedia,
-      change: '0',
-      changeType: 'increase' as const,
+      footnote:
+        dashboard && dashboard.reviewsAllTime.count > 0
+          ? `${dashboard.reviewsAllTime.count} avaliação(ões) no total`
+          : 'média das avaliações recebidas',
       icon: Star,
-      color: 'text-yellow-500'
-    }
+      color: 'text-yellow-500',
+    },
   ]
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Alertas */}
       {alerts.length > 0 && (
         <div className="space-y-3">
           {alerts.map((alert, index) => (
@@ -186,10 +199,10 @@ export function ProOverview() {
         </div>
       )}
 
-      {/* KPIs */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => {
           const Icon = kpi.icon
+          const isEmptyKpi = kpi.title === 'Nota Média' && kpi.value === '-'
           return (
             <Card key={kpi.title}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -202,16 +215,26 @@ export function ProOverview() {
                 ) : (
                   <>
                     <div className="text-2xl font-bold text-foreground">{kpi.value}</div>
-                    <div className="flex items-center text-xs text-muted-foreground">
-                      {kpi.value !== '-' && kpi.value !== '0' && kpi.value !== 'R$ 0' && (
-                        <>
-                          <TrendingUp className="h-3 w-3 mr-1" />
-                          <span className="text-green-600">{kpi.change}</span>
-                          <span className="ml-1">vs. mês anterior</span>
-                        </>
+                    <div className="flex flex-col gap-1 text-xs text-muted-foreground mt-1">
+                      {kpi.showTrend && kpi.trendValue !== undefined && kpi.trendValue !== null && (
+                        <span
+                          className={`flex items-center ${kpi.trendValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                        >
+                          {kpi.trendValue >= 0 ? (
+                            <TrendingUp className="h-3 w-3 mr-1 shrink-0" />
+                          ) : (
+                            <TrendingDown className="h-3 w-3 mr-1 shrink-0" />
+                          )}
+                          {kpi.trendValue >= 0 ? '+' : ''}
+                          {kpi.trendValue}% vs. mês anterior
+                        </span>
                       )}
-                      {(kpi.value === '-' || kpi.value === '0' || kpi.value === 'R$ 0') && (
-                        <span className="text-muted-foreground">Sem dados ainda</span>
+                      <span>{kpi.footnote}</span>
+                      {kpi.title === 'Ganhos (Mês)' && netCents === 0 && !loading && (
+                        <span>Nenhum pagamento pago no período.</span>
+                      )}
+                      {isEmptyKpi && (
+                        <span className="text-muted-foreground">Ainda não há avaliações.</span>
                       )}
                     </div>
                   </>
@@ -223,16 +246,13 @@ export function ProOverview() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
-        {/* Próximos Agendamentos */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">
               <Clock className="h-5 w-5" />
               Próximos Agendamentos
             </CardTitle>
-            <CardDescription>
-              Seus atendimentos de hoje
-            </CardDescription>
+            <CardDescription>Seus atendimentos de hoje</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -259,28 +279,40 @@ export function ProOverview() {
                       <AvatarFallback>{(booking.tutor || 'C')[0].toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <p className="font-medium text-sm text-foreground">{booking.pet} - {booking.service}</p>
+                      <p className="font-medium text-sm text-foreground">
+                        {booking.pet} - {booking.service}
+                      </p>
                       <p className="text-xs text-muted-foreground">{booking.tutor}</p>
                     </div>
-                    <Badge 
+                    <Badge
                       variant={
-                        booking.status === 'CONFIRMED' ? 'default' :
-                        booking.status === 'PENDING' ? 'secondary' :
-                        booking.status === 'DONE' ? 'outline' :
-                        'destructive'
+                        booking.status === 'CONFIRMED'
+                          ? 'default'
+                          : booking.status === 'PENDING'
+                            ? 'secondary'
+                            : booking.status === 'DONE'
+                              ? 'outline'
+                              : 'destructive'
                       }
                       className={
-                        booking.status === 'CONFIRMED' ? 'bg-green-100 text-green-800 border-green-200' :
-                        booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
-                        booking.status === 'DONE' ? 'bg-blue-100 text-blue-800 border-blue-200' :
-                        'bg-red-100 text-red-800 border-red-200'
+                        booking.status === 'CONFIRMED'
+                          ? 'bg-green-100 text-green-800 border-green-200'
+                          : booking.status === 'PENDING'
+                            ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                            : booking.status === 'DONE'
+                              ? 'bg-blue-100 text-blue-800 border-blue-200'
+                              : 'bg-red-100 text-red-800 border-red-200'
                       }
                     >
-                      {booking.status === 'CONFIRMED' ? 'Confirmado' :
-                       booking.status === 'PENDING' ? 'Pendente' :
-                       booking.status === 'DONE' ? 'Concluído' :
-                       booking.status === 'CANCELLED' ? 'Cancelado' :
-                       booking.status}
+                      {booking.status === 'CONFIRMED'
+                        ? 'Confirmado'
+                        : booking.status === 'PENDING'
+                          ? 'Pendente'
+                          : booking.status === 'DONE'
+                            ? 'Concluído'
+                            : booking.status === 'CANCELLED'
+                              ? 'Cancelado'
+                              : booking.status}
                     </Badge>
                   </div>
                 ))}
@@ -292,49 +324,62 @@ export function ProOverview() {
           </CardContent>
         </Card>
 
-        {/* Performance Mensal */}
         <Card>
           <CardHeader>
             <CardTitle className="text-foreground">Performance Mensal</CardTitle>
-            <CardDescription>{new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</CardDescription>
+            <CardDescription className="capitalize">{performanceMonthLabel}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-foreground">Agendamentos</span>
-                <span className="text-foreground">0/0</span>
+                <span className="text-foreground">Agendamentos (concluídos / total)</span>
+                <span className="text-foreground">
+                  {loading || !b ? '—' : `${b.done}/${b.total}`}
+                </span>
               </div>
-              <Progress value={0} className="h-2" />
+              <Progress value={loading || !b ? 0 : b.appointmentsProgressPercent} className="h-2" />
             </div>
-            
+
             <div>
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-foreground">Taxa de Aprovação</span>
-                <span className="text-foreground">0%</span>
+                <span className="text-foreground">Taxa de aprovação</span>
+                <span className="text-foreground">
+                  {loading || !b ? '—' : `${b.approvalRatePercent}%`}
+                </span>
               </div>
-              <Progress value={0} className="h-2" />
+              <Progress value={loading || !b ? 0 : b.approvalRatePercent} className="h-2" />
             </div>
-            
+
             <div>
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-foreground">Satisfação</span>
-                <span className="text-foreground">-</span>
+                <span className="text-foreground">Satisfação (mês)</span>
+                <span className="text-foreground">
+                  {loading || !reviewsMonth || reviewsMonth.count === 0
+                    ? '—'
+                    : `${reviewsMonth.averageRating?.toFixed(1) ?? '—'} / 5`}
+                </span>
               </div>
-              <Progress value={0} className="h-2" />
+              <Progress value={loading ? 0 : satisfactionPercent} className="h-2" />
             </div>
 
             <div className="pt-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-foreground">Receita Total</span>
-                <span className="font-medium text-foreground">R$ 0</span>
+                <span className="text-foreground">Receita bruta (paga)</span>
+                <span className="font-medium text-foreground">
+                  {loading ? '—' : formatBRLFromCents(grossCents)}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-foreground">Taxa da Plataforma</span>
-                <span className="text-muted-foreground">- R$ 0</span>
+                <span className="text-foreground">Taxa da plataforma</span>
+                <span className="text-muted-foreground">
+                  {loading ? '—' : `− ${formatBRLFromCents(platformFeeCents)}`}
+                </span>
               </div>
               <div className="flex justify-between text-sm font-medium border-t pt-2">
-                <span className="text-foreground">Valor Líquido</span>
-                <span className="text-foreground">R$ 0</span>
+                <span className="text-foreground">Valor líquido</span>
+                <span className="text-foreground">
+                  {loading ? '—' : formatBRLFromCents(netCents)}
+                </span>
               </div>
             </div>
           </CardContent>

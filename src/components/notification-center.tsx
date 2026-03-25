@@ -1,5 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { notificationsService } from '../services/notifications.service'
+import {
+  subscribeNewNotifications,
+  subscribeNotificationMarkedRead,
+  subscribeUnreadCountUpdated,
+  type RealtimeNotificationPayload,
+  type NotificationMarkedReadPayload,
+} from '../services/socket.service'
 import { Card } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
@@ -17,6 +24,7 @@ import {
   DollarSign,
   Settings
 } from 'lucide-react'
+import { cn } from './ui/utils'
 
 export interface Notification {
   id: string
@@ -43,6 +51,7 @@ export interface Notification {
       action: () => void
     }
   }
+  entityType?: string
 }
 
 interface NotificationCenterProps {
@@ -51,6 +60,13 @@ interface NotificationCenterProps {
   onMarkAllAsRead: () => void
   onRemoveNotification: (id: string) => void
   onClearAll: () => void
+  showInlineFilters?: boolean
+  totalUnreadCount?: number
+  emptyMessage?: string
+  /** Com showInlineFilters false, use a quantidade total na conta para exibir o rodapé "Limpar todas" */
+  totalCountForFooter?: number
+  /** Clique no cartão (exceto remover / marcar lida / ações custom) — ex.: marcar lida e navegar */
+  onNotificationOpen?: (notification: Notification) => void
 }
 
 export function NotificationCenter({ 
@@ -58,23 +74,35 @@ export function NotificationCenter({
   onMarkAsRead, 
   onMarkAllAsRead, 
   onRemoveNotification,
-  onClearAll 
+  onClearAll,
+  showInlineFilters = true,
+  totalUnreadCount,
+  emptyMessage: emptyMessageProp,
+  totalCountForFooter,
+  onNotificationOpen,
 }: NotificationCenterProps) {
-  const [filter, setFilter] = useState<'all' | 'unread' | 'important'>('all')
+  const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all')
 
-  const unreadCount = notifications.filter(n => !n.read).length
-  const importantCount = notifications.filter(n => n.priority === 'high' || n.priority === 'urgent').length
+  const unreadInList = notifications.filter(n => !n.read).length
+  const readCount = notifications.filter(n => n.read).length
+  const headerUnreadCount = showInlineFilters
+    ? unreadInList
+    : (totalUnreadCount !== undefined ? totalUnreadCount : unreadInList)
 
-  const filteredNotifications = notifications.filter(notification => {
-    switch (filter) {
-      case 'unread':
-        return !notification.read
-      case 'important':
-        return notification.priority === 'high' || notification.priority === 'urgent'
-      default:
-        return true
-    }
-  }).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+  const filteredNotifications = (
+    showInlineFilters
+      ? notifications.filter(notification => {
+          switch (filter) {
+            case 'unread':
+              return !notification.read
+            case 'read':
+              return notification.read
+            default:
+              return true
+          }
+        })
+      : notifications
+  ).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
 
   const getNotificationIcon = (type: Notification['type']) => {
     const iconMap = {
@@ -129,13 +157,13 @@ export function NotificationCenter({
           <div className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-aumigo-orange" />
             <h2 className="font-semibold text-foreground">Notificações</h2>
-            {unreadCount > 0 && (
+            {headerUnreadCount > 0 && (
               <Badge className="bg-aumigo-orange text-white text-xs">
-                {unreadCount}
+                {headerUnreadCount}
               </Badge>
             )}
           </div>
-          {unreadCount > 0 && (
+          {headerUnreadCount > 0 && (
             <Button 
               variant="ghost" 
               size="sm" 
@@ -147,33 +175,34 @@ export function NotificationCenter({
           )}
         </div>
 
-        {/* Filtros */}
-        <div className="flex gap-2">
-          <Button
-            variant={filter === 'all' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('all')}
-            className={filter === 'all' ? 'bg-aumigo-orange text-white' : ''}
-          >
-            Todas ({notifications.length})
-          </Button>
-          <Button
-            variant={filter === 'unread' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('unread')}
-            className={filter === 'unread' ? 'bg-aumigo-orange text-white' : ''}
-          >
-            Não lidas ({unreadCount})
-          </Button>
-          <Button
-            variant={filter === 'important' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('important')}
-            className={filter === 'important' ? 'bg-aumigo-orange text-white' : ''}
-          >
-            Importantes ({importantCount})
-          </Button>
-        </div>
+        {showInlineFilters && (
+          <div className="flex gap-2">
+            <Button
+              variant={filter === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilter('all')}
+              className={filter === 'all' ? 'bg-aumigo-orange text-white' : ''}
+            >
+              Todas ({notifications.length})
+            </Button>
+            <Button
+              variant={filter === 'unread' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilter('unread')}
+              className={filter === 'unread' ? 'bg-aumigo-orange text-white' : ''}
+            >
+              Não lidas ({unreadInList})
+            </Button>
+            <Button
+              variant={filter === 'read' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilter('read')}
+              className={filter === 'read' ? 'bg-aumigo-orange text-white' : ''}
+            >
+              Lidas ({readCount})
+            </Button>
+          </div>
+        )}
       </div>
 
       <ScrollArea className="h-[400px]">
@@ -182,9 +211,16 @@ export function NotificationCenter({
             <div className="text-center py-8 text-muted-foreground">
               <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">
-                {filter === 'all' && 'Nenhuma notificação'}
-                {filter === 'unread' && 'Nenhuma notificação não lida'}
-                {filter === 'important' && 'Nenhuma notificação importante'}
+                {emptyMessageProp ??
+                  (showInlineFilters
+                    ? (
+                      <>
+                        {filter === 'all' && 'Nenhuma notificação'}
+                        {filter === 'unread' && 'Nenhuma notificação não lida'}
+                        {filter === 'read' && 'Nenhuma notificação lida'}
+                      </>
+                    )
+                    : 'Nenhuma notificação neste filtro')}
               </p>
             </div>
           ) : (
@@ -196,9 +232,29 @@ export function NotificationCenter({
                 return (
                   <div
                     key={notification.id}
-                    className={`p-3 rounded-lg border transition-colors hover:bg-muted/50 ${
-                      !notification.read ? 'bg-aumigo-orange/5 border-aumigo-orange/20' : 'bg-card'
-                    }`}
+                    role={onNotificationOpen ? 'button' : undefined}
+                    tabIndex={onNotificationOpen ? 0 : undefined}
+                    onClick={
+                      onNotificationOpen
+                        ? () => onNotificationOpen(notification)
+                        : undefined
+                    }
+                    onKeyDown={
+                      onNotificationOpen
+                        ? (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              onNotificationOpen(notification)
+                            }
+                          }
+                        : undefined
+                    }
+                    className={cn(
+                      'p-3 rounded-lg border transition-colors',
+                      !notification.read ? 'bg-aumigo-orange/5 border-aumigo-orange/20' : 'bg-card',
+                      onNotificationOpen && 'cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-aumigo-orange/40',
+                      !onNotificationOpen && 'hover:bg-muted/50',
+                    )}
                   >
                     <div className="flex items-start gap-3">
                       <div className={`p-1.5 rounded-full bg-background ${iconColor}`}>
@@ -217,7 +273,10 @@ export function NotificationCenter({
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => onRemoveNotification(notification.id)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onRemoveNotification(notification.id)
+                              }}
                               className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
                             >
                               <X className="h-3 w-3" />
@@ -268,7 +327,10 @@ export function NotificationCenter({
                             {notification.actions?.primary && (
                               <Button
                                 size="sm"
-                                onClick={notification.actions.primary.action}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  notification.actions?.primary?.action()
+                                }}
                                 className="h-7 text-xs bg-aumigo-orange hover:bg-aumigo-orange/90"
                               >
                                 {notification.actions.primary.label}
@@ -278,7 +340,10 @@ export function NotificationCenter({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={notification.actions.secondary.action}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  notification.actions?.secondary?.action()
+                                }}
                                 className="h-7 text-xs"
                               >
                                 {notification.actions.secondary.label}
@@ -290,7 +355,10 @@ export function NotificationCenter({
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => onMarkAsRead(notification.id)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onMarkAsRead(notification.id)
+                              }}
                               className="h-7 text-xs text-aumigo-blue hover:text-aumigo-blue/80"
                             >
                               Marcar lida
@@ -308,7 +376,9 @@ export function NotificationCenter({
       </ScrollArea>
 
       {/* Footer com ações gerais */}
-      {notifications.length > 0 && (
+      {(showInlineFilters
+        ? notifications.length > 0
+        : (totalCountForFooter !== undefined ? totalCountForFooter > 0 : notifications.length > 0)) && (
         <div className="p-4 border-t">
           <Button
             variant="outline"
@@ -328,6 +398,7 @@ export function NotificationCenter({
 function mapApiToNotification(api: { id: string; title: string; message: string; entityType?: string; entityId?: string; isRead: boolean; createdAt: string }): Notification {
   const typeMap: Record<string, Notification['type']> = {
     booking: 'booking',
+    chat: 'message',
     reminder: 'system',
     review: 'review',
     vaccine: 'system',
@@ -344,6 +415,7 @@ function mapApiToNotification(api: { id: string; title: string; message: string;
     timestamp: new Date(api.createdAt),
     read: api.isRead,
     bookingId: api.entityId,
+    entityType: api.entityType,
   }
 }
 
@@ -353,6 +425,7 @@ export function useNotifications() {
   const [historyNotifications, setHistoryNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [historyLoading, setHistoryLoading] = useState(false)
+  const lastRealtimeReloadRef = useRef<number>(0)
 
   const loadNotifications = useCallback(async () => {
     setLoading(true)
@@ -380,6 +453,51 @@ export function useNotifications() {
 
   useEffect(() => {
     loadNotifications()
+  }, [loadNotifications])
+
+  // ============================================================================
+  // 🔔 Realtime: novas notificações + contador + mudanças de "lida"
+  // ============================================================================
+  useEffect(() => {
+    const reloadThrottled = () => {
+      const now = Date.now()
+      if (now - lastRealtimeReloadRef.current < 2000) return
+      lastRealtimeReloadRef.current = now
+      void loadNotifications()
+    }
+
+    const unsubNew = subscribeNewNotifications((payload: RealtimeNotificationPayload) => {
+      const mapped = mapApiToNotification(payload as any)
+
+      setNotifications((prev) => {
+        const exists = prev.some((n) => n.id === mapped.id)
+        if (exists) return prev.map((n) => (n.id === mapped.id ? mapped : n))
+        return [mapped, ...prev]
+      })
+
+      setHistoryNotifications((prev) => {
+        const exists = prev.some((n) => n.id === mapped.id)
+        if (exists) return prev.map((n) => (n.id === mapped.id ? mapped : n))
+        return [mapped, ...prev]
+      })
+    })
+
+    const unsubUnread = subscribeUnreadCountUpdated(() => {
+      reloadThrottled()
+    })
+
+    const unsubMarked = subscribeNotificationMarkedRead((payload: NotificationMarkedReadPayload) => {
+      setNotifications((prev) => prev.map((n) => (n.id === payload.notificationId ? { ...n, read: true } : n)))
+      setHistoryNotifications((prev) =>
+        prev.map((n) => (n.id === payload.notificationId ? { ...n, read: true } : n)),
+      )
+    })
+
+    return () => {
+      unsubNew()
+      unsubUnread()
+      unsubMarked()
+    }
   }, [loadNotifications])
 
   const markAsRead = useCallback(async (id: string) => {

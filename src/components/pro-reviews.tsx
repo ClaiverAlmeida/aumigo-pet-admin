@@ -33,6 +33,7 @@ import { ReportModal } from './report-modal'
 
 interface ReviewData {
   id: string | number
+  providerId: string
   client: {
     name: string
     avatar?: string
@@ -59,6 +60,7 @@ interface ReviewData {
 function convertBackendReview(backendReview: BackendReview): ReviewData {
   return {
     id: backendReview.id,
+    providerId: backendReview.provider?.id || backendReview.providerId || '',
     client: {
       name: backendReview.author?.name || 'Cliente',
       avatar: backendReview.author?.profilePicture,
@@ -163,7 +165,7 @@ function ReviewCard({ review, onReply, onHelpful, onReport, onMarkImportant, hel
                   ) : (
                     <>
                       <Pin className="h-4 w-4 mr-2" />
-                      Marcar como importante
+                      Marcar como destaque
                     </>
                   )}
                 </DropdownMenuItem>
@@ -282,10 +284,15 @@ export function ProReviews() {
       if (selectedRating !== "all") filters.rating = parseInt(selectedRating)
       if (selectedService !== "all") filters.providerId = selectedService
 
-      const result = await reviewsService.getAll(filters)
+      const result = await reviewsService.getAllByCompany(filters)
 
       if (result.success && result.data) {
-        const backendReviews = result.data.data || []
+        const rawData: any = result.data
+        const backendReviews = Array.isArray(rawData?.data)
+          ? rawData.data
+          : Array.isArray(rawData)
+            ? rawData
+            : []
         const convertedReviews = backendReviews.map(convertBackendReview)
         setReviewsData(convertedReviews)
       } else {
@@ -397,10 +404,19 @@ export function ProReviews() {
     setReportTargetId(null)
   }
 
+  const serviceOptions = Array.from(
+    new Map(
+      reviewsData.map((review) => [
+        review.providerId || review.service,
+        { value: review.providerId || review.service, label: review.service },
+      ]),
+    ).values(),
+  )
+
   const filteredReviews = reviewsData
     .filter(review => {
       if (selectedRating !== "all" && review.rating !== parseInt(selectedRating)) return false
-      if (selectedService !== "all" && review.service !== selectedService) return false
+      if (selectedService !== "all" && review.providerId !== selectedService) return false
       if (selectedPeriod !== "all") {
         const now = new Date()
         const reviewDate = review.date instanceof Date ? review.date : new Date(review.date)
@@ -551,10 +567,11 @@ export function ProReviews() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os serviços</SelectItem>
-                <SelectItem value="Vacinação">Vacinação</SelectItem>
-                <SelectItem value="Banho e Tosa">Banho e Tosa</SelectItem>
-                <SelectItem value="Consulta Veterinária">Consulta Veterinária</SelectItem>
-                <SelectItem value="Adestramento">Adestramento</SelectItem>
+                {serviceOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 

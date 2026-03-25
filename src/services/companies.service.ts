@@ -3,6 +3,7 @@ import { api } from './api.service';
 export interface Company {
   id: string;
   name: string;
+  logo?: string;
   address?: string;
   addressNumber?: string;
   city?: string;
@@ -13,6 +14,8 @@ export interface Company {
   website?: string;
   cnpj?: string;
   deletedAt?: string | null;
+  /** Especialidade principal (ServiceCategory) */
+  primaryCategory?: string;
   /** Dados para repasse (recebimento de saques) */
   payoutPixKey?: string;
   payoutPixKeyType?: string;
@@ -37,6 +40,7 @@ export interface CompanyListItem extends Company {
 
 export interface UpdateCompanyData {
   name?: string;
+  logo?: string;
   address?: string;
   addressNumber?: string;
   city?: string;
@@ -46,6 +50,7 @@ export interface UpdateCompanyData {
   contactEmail?: string;
   website?: string;
   cnpj?: string;
+  primaryCategory?: string;
   payoutPixKey?: string;
   payoutPixKeyType?: string;
   payoutBankCode?: string;
@@ -111,6 +116,7 @@ export class CompaniesService {
             data: {
               id: companyData.id,
               name: companyData.name || '',
+              logo: companyData.logo || '',
               address: companyData.address || '',
               addressNumber: companyData.addressNumber || '',
               city: companyData.city || '',
@@ -120,6 +126,7 @@ export class CompaniesService {
               contactEmail: companyData.contactEmail || '',
               website: companyData.website || '',
               cnpj: companyData.cnpj || '',
+              primaryCategory: companyData.primaryCategory || '',
               payoutPixKey: companyData.payoutPixKey ?? '',
               payoutPixKeyType: companyData.payoutPixKeyType ?? '',
               payoutBankCode: companyData.payoutBankCode ?? '',
@@ -157,6 +164,7 @@ export class CompaniesService {
             data: {
               id: companyData.id,
               name: companyData.name,
+              logo: companyData.logo,
               address: companyData.address,
               addressNumber: companyData.addressNumber,
               city: companyData.city,
@@ -166,6 +174,7 @@ export class CompaniesService {
               contactEmail: companyData.contactEmail,
               website: companyData.website,
               cnpj: companyData.cnpj,
+              primaryCategory: companyData.primaryCategory,
               payoutPixKey: companyData.payoutPixKey,
               payoutPixKeyType: companyData.payoutPixKeyType,
               payoutBankCode: companyData.payoutBankCode,
