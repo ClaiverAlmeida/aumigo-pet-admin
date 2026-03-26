@@ -430,7 +430,7 @@ export function useNotifications() {
   const loadNotifications = useCallback(async () => {
     setLoading(true)
     // Busca notificações ativas (exclui as que foram removidas/limpas)
-    const result = await notificationsService.getAll({ limit: 500 })
+    const result = await notificationsService.getAll({ limit: 100 })
     if (result.success && result.data) {
       setNotifications(result.data.notifications.map(mapApiToNotification))
     }

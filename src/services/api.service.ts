@@ -64,9 +64,12 @@ class ApiService {
     // Interceptor de requisição - Adiciona token automaticamente
     this.axiosInstance.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem("auth_token");
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
+        const rawToken = localStorage.getItem("auth_token");
+        if (rawToken) {
+          const token = rawToken.trim().replace(/^"+|"+$/g, "");
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+          }
         }
         return config;
       },
@@ -94,7 +97,7 @@ class ApiService {
             const refreshToken = localStorage.getItem("refresh_token");
             if (refreshToken) {
               const response = await this.axiosInstance.post("/auth/refresh", {
-                refreshToken: refreshToken,
+                refreshToken: refreshToken.trim().replace(/^"+|"+$/g, ""),
               });
 
               // Atualizar tokens
