@@ -23,6 +23,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { api } from '../services/api.service'
 import { getUserFromToken } from '../services/jwt'
 import exampleImage from '../assets/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
+import { lookupCep } from '../utils/viacep'
 
 interface OnboardingCompanyProps {
   onComplete: () => void
@@ -52,35 +53,29 @@ export function OnboardingCompany({ onComplete, user }: OnboardingCompanyProps) 
     state: '',
   })
 
-  // Função para buscar endereço pelo CEP (ViaCEP)
   const handleCepChange = async (cep: string) => {
     const cleanCep = cep.replace(/\D/g, '')
-    
     if (cleanCep.length === 8) {
       setLoadingCep(true)
       try {
-        const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`)
-        const data = await response.json()
-        
-        if (!data.erro) {
-          setCompanyData(prev => ({
+        const data = await lookupCep(cleanCep)
+        if (data) {
+          setCompanyData((prev) => ({
             ...prev,
-            zipCode: cleanCep.replace(/(\d{5})(\d{3})/, '$1-$2'),
-            address: data.logradouro || '',
-            city: data.localidade || '',
-            state: data.uf || '',
+            zipCode: data.zipCode,
+            address: data.address,
+            city: data.city,
+            state: data.state,
           }))
           toast.success('Endereço encontrado!')
         } else {
           toast.error('CEP não encontrado')
         }
-      } catch (error) {
-        toast.error('Erro ao buscar CEP')
       } finally {
         setLoadingCep(false)
       }
     } else {
-      setCompanyData(prev => ({ ...prev, zipCode: cep }))
+      setCompanyData((prev) => ({ ...prev, zipCode: cleanCep }))
     }
   }
 

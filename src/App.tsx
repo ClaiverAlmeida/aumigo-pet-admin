@@ -162,7 +162,7 @@ export default function App() {
         case 'settings':
           return <AdminSettings adminUser={adminUser ?? undefined} />
         case 'notifications':
-          return <ProNotifications />
+          return <ProNotifications variant="admin" />
         case 'companies':
           return <AdminCompanies onNavigate={handleNavigateWithParams} />
         case 'payments':

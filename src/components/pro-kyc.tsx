@@ -10,7 +10,9 @@ import {
   Loader2,
   User,
   Building,
+  MapPin,
 } from 'lucide-react'
+import { lookupCep } from '../utils/viacep'
 import { companiesService, usersService } from '../services'
 import { toast } from 'sonner'
 import { useAuth } from '../contexts/AuthContext'
@@ -134,6 +136,7 @@ export function ProKYC() {
   const [isEditingCompany, setIsEditingCompany] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [loadingCep, setLoadingCep] = useState(false)
 
   // Carregar dados iniciais
   useEffect(() => {
@@ -202,6 +205,32 @@ export function ProKYC() {
 
   const handleCompanyChange = (field: keyof CompanyData, value: string) => {
     setCompany(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleCompanyCepChange = async (cepDigits: string) => {
+    const clean = cepDigits.replace(/\D/g, '')
+    if (clean.length === 8) {
+      setLoadingCep(true)
+      try {
+        const data = await lookupCep(clean)
+        if (data) {
+          setCompany((prev) => ({
+            ...prev,
+            zipCode: data.zipCode,
+            address: data.address,
+            city: data.city,
+            state: data.state,
+          }))
+          toast.success('Endereço encontrado!')
+        } else {
+          toast.error('CEP não encontrado')
+        }
+      } finally {
+        setLoadingCep(false)
+      }
+    } else {
+      setCompany((prev) => ({ ...prev, zipCode: clean }))
+    }
   }
 
   const handleSaveCompany = async () => {
@@ -416,6 +445,26 @@ export function ProKYC() {
               <Label>Endereço</Label>
               {isEditingCompany ? (
                 <div className="space-y-2">
+                  <div className="relative"> 
+                    <Input
+                      className="pl-9 pr-9"
+                      value={company.zipCode || ''}
+                      placeholder="00000-000"
+                      maxLength={9}
+                      inputMode="numeric"
+                      autoComplete="postal-code"
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, '')
+                        void handleCompanyCepChange(digits)
+                      }}
+                    />
+                    {loadingCep && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Digite o CEP para preencher rua, cidade e UF automaticamente
+                  </p>
                   <Input 
                     value={company.address || ''} 
                     placeholder="Rua"
@@ -438,11 +487,7 @@ export function ProKYC() {
                       onChange={(e) => handleCompanyChange('state', e.target.value)}
                     />
                   </div>
-                  <Input 
-                    value={company.zipCode || ''} 
-                    placeholder="CEP"
-                    onChange={(e) => handleCompanyChange('zipCode', e.target.value)}
-                  />
+               
                 </div>
               ) : (
                 <div className="text-sm mt-1">

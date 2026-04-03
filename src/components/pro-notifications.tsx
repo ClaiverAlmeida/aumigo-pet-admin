@@ -15,12 +15,15 @@ import {
   Pill,
   Star,
   Syringe,
-  MessageSquare,
+  MessageCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { notificationsService } from '../services/notifications.service'
 import { useRouter } from '../hooks/useRouter'
-import { obterRotaProPorTipoNotificacao } from '../utils/pro-notification-routes'
+import {
+  obterRotaAdminPorTipoNotificacao,
+  obterRotaProPorTipoNotificacao,
+} from '../utils/pro-notification-routes'
 
 type EntityFilterId = '' | 'booking' | 'reminder' | 'review' | 'vaccine' | 'chat'
 
@@ -30,7 +33,7 @@ const ENTITY_FILTERS: { id: EntityFilterId; label: string; icon: typeof Bell }[]
   { id: 'reminder', label: 'Lembretes', icon: Pill },
   { id: 'review', label: 'Avaliações', icon: Star },
   { id: 'vaccine', label: 'Vacinas', icon: Syringe },
-  { id: 'chat', label: 'Mensagens', icon: MessageSquare },
+  { id: 'chat', label: 'Chat', icon: MessageCircle },
 ]
 
 const KNOWN_ENTITY_TYPES: EntityFilterId[] = ['booking', 'reminder', 'review', 'vaccine', 'chat']
@@ -39,7 +42,12 @@ function isEntityFilterId(t: string): t is EntityFilterId {
   return (KNOWN_ENTITY_TYPES as string[]).includes(t)
 }
 
-export function ProNotifications() {
+interface ProNotificationsProps {
+  /** No painel admin (`/admin/notifications`), os cliques devem ir para rotas `/admin/...`, não `/pro/...`. */
+  variant?: 'pro' | 'admin'
+}
+
+export function ProNotifications({ variant = 'pro' }: ProNotificationsProps) {
   const { navigate } = useRouter()
   const {
     notifications,
@@ -130,13 +138,17 @@ export function ProNotifications() {
         } catch {
           // ignore
         }
-        navigate('/pro/chat')
+        navigate(variant === 'admin' ? '/admin/dashboard' : '/pro/chat')
         return
       }
 
-      navigate(obterRotaProPorTipoNotificacao(n.entityType))
+      const rota =
+        variant === 'admin'
+          ? obterRotaAdminPorTipoNotificacao(n.entityType)
+          : obterRotaProPorTipoNotificacao(n.entityType)
+      navigate(rota)
     },
-    [markAsRead, navigate],
+    [markAsRead, navigate, variant],
   )
 
   const handleExportNotifications = async () => {
@@ -173,7 +185,7 @@ export function ProNotifications() {
           <Badge className="bg-aumigo-orange text-white text-xs sm:text-sm">
             {unreadCount} não lidas
           </Badge>
-          {/* <Button 
+          <Button 
             variant="outline" 
             size="sm"
             className="border-aumigo-blue text-aumigo-blue hover:bg-aumigo-blue hover:text-white text-xs sm:text-sm"
@@ -182,7 +194,7 @@ export function ProNotifications() {
             <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
             <span className="hidden sm:inline">Exportar Histórico</span>
             <span className="sm:hidden">Exportar</span>
-          </Button> */}
+          </Button>
         </div>
       </div>
 

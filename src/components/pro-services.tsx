@@ -20,6 +20,7 @@ import { serviceProvidersService, ServiceProvider as BackendProvider } from '../
 import { companiesService, Company } from '../services/companies.service'
 import { useAuth } from '../contexts/AuthContext'
 import { toast } from 'sonner'
+import { lookupCep } from '../utils/viacep'
 import {
   Plus,
   Edit,
@@ -33,7 +34,8 @@ import {
   ImageIcon,
   X,
   AlertCircle,
-  Loader2
+  Loader2,
+  MapPin,
 } from 'lucide-react'
 
 // Interface para o frontend (mantém compatibilidade com UI)
@@ -857,6 +859,33 @@ function ProviderDialog({ provider, companyData, onSave, onClose }: ProviderDial
   const [useCompanyContact, setUseCompanyContact] = useState(
     provider ? ((provider as any)?.useCompanyContact ?? true) : true
   )
+  const [loadingCep, setLoadingCep] = useState(false)
+
+  const handleProviderCepChange = async (cepDigits: string) => {
+    const clean = cepDigits.replace(/\D/g, '')
+    if (clean.length === 8) {
+      setLoadingCep(true)
+      try {
+        const data = await lookupCep(clean)
+        if (data) {
+          setFormData((prev) => ({
+            ...prev,
+            zipCode: data.zipCode,
+            address: data.address,
+            city: data.city,
+            state: data.state,
+          }))
+          toast.success('Endereço encontrado!')
+        } else {
+          toast.error('CEP não encontrado')
+        }
+      } finally {
+        setLoadingCep(false)
+      }
+    } else {
+      setFormData((prev) => ({ ...prev, zipCode: clean }))
+    }
+  }
 
   // Atualizar formData quando o provider mudar (edição)
   useEffect(() => {
@@ -993,12 +1022,27 @@ function ProviderDialog({ provider, companyData, onSave, onClose }: ProviderDial
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <Label htmlFor="provider-zipCode">CEP</Label>
-                <Input
-                  id="provider-zipCode"
-                  value={formData.zipCode}
-                  onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
-                  placeholder="00000-000"
-                />
+                <div className="relative">
+                  <Input
+                    id="provider-zipCode"
+                    className="pl-9 pr-9"
+                    value={formData.zipCode}
+                    placeholder="00000-000"
+                    maxLength={9}
+                    inputMode="numeric"
+                    autoComplete="postal-code"
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, '')
+                      void handleProviderCepChange(digits)
+                    }}
+                  />
+                  {loadingCep && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Digite o CEP para preencher rua, cidade e UF automaticamente
+                </p>
               </div>
             </div>
 

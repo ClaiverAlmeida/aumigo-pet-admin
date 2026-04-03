@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../contexts/AuthContext'
+import { lookupCep } from '../utils/viacep'
 
 interface AuthProps {
   onLogin: (userData: any) => void
@@ -344,36 +345,29 @@ export function Auth({ onLogin }: AuthProps) {
     }, 2000)
   }
 
-  // Função para buscar endereço pelo CEP (ViaCEP)
   const handleCepChange = async (cep: string) => {
     const cleanCep = cep.replace(/\D/g, '')
-    
     if (cleanCep.length === 8) {
       setLoadingCep(true)
       try {
-        const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`)
-        const data = await response.json()
-        
-        if (!data.erro) {
-          setSignupData(prev => ({
+        const data = await lookupCep(cleanCep)
+        if (data) {
+          setSignupData((prev) => ({
             ...prev,
-            zipCode: cleanCep.replace(/(\d{5})(\d{3})/, '$1-$2'),
-            address: data.logradouro || '',
-            city: data.localidade || '',
-            state: data.uf || '',
-            // Não preenchemos addressNumber automaticamente, usuário deve informar
+            zipCode: data.zipCode,
+            address: data.address,
+            city: data.city,
+            state: data.state,
           }))
           toast.success('Endereço encontrado!')
         } else {
           toast.error('CEP não encontrado')
         }
-      } catch (error) {
-        toast.error('Erro ao buscar CEP')
       } finally {
         setLoadingCep(false)
       }
     } else {
-      setSignupData(prev => ({ ...prev, zipCode: cep }))
+      setSignupData((prev) => ({ ...prev, zipCode: cleanCep }))
     }
   }
 
