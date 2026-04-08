@@ -157,6 +157,84 @@ export class AuthService {
     }
   }
 
+  // Solicitar recuperação de senha
+  async forgotPassword(email: string) {
+    try {
+      const result = await api.post('/auth/forgot-password', { email });
+      if (result.success) {
+        return {
+          success: true,
+          message: result.data?.message || 'Se o e-mail existir, enviaremos as instruções.',
+        };
+      }
+      return {
+        success: false,
+        error: result.error || 'Erro ao solicitar recuperação de senha',
+      };
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Erro ao solicitar recuperação de senha';
+      return { success: false, error: message };
+    }
+  }
+
+  async validateResetToken(token: string) {
+    try {
+      const result = await api.post('/auth/validate-reset-token', { token });
+      if (result.success) {
+        return {
+          success: true,
+          isValid: Boolean((result.data as any)?.isValid),
+          email: ((result.data as any)?.email as string | null) || null,
+        };
+      }
+      return {
+        success: false,
+        isValid: false,
+        email: null,
+        error: result.error || 'Token inválido',
+      };
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Erro ao validar token de recuperação';
+      return { success: false, isValid: false, email: null, error: message };
+    }
+  }
+
+  async resetPasswordWithToken(
+    token: string,
+    newPassword: string,
+    confirmPassword: string,
+  ) {
+    try {
+      const result = await api.post('/auth/reset-password', {
+        token,
+        newPassword,
+        confirmPassword,
+      });
+      if (result.success) {
+        return {
+          success: true,
+          message: (result.data as any)?.message || 'Senha alterada com sucesso',
+        };
+      }
+      return {
+        success: false,
+        error: result.error || 'Não foi possível redefinir a senha',
+      };
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Erro ao redefinir senha';
+      return { success: false, error: message };
+    }
+  }
+
   // Refresh token
   async refreshToken() {
     if (!this.authState.refreshToken) {

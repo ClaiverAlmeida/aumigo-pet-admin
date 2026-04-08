@@ -47,3 +47,5 @@ export type { Review, ReviewStatistics, ResponseReviewData } from './reviews.ser
 // 💬 SERVIÇO DE CHAT
 export { chatService } from './chat.service';
 export type { ChatConversation, ChatMessage, ChatPaginatedResponse } from './chat.service';
+export { couponsService } from './coupons.service';
+export type { Coupon, CouponDiscountType, CreateCouponPayload } from './coupons.service';

@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../contexts/AuthContext'
+import { authService } from '../services/auth.service'
 import { lookupCep } from '../utils/viacep'
 
 interface AuthProps {
@@ -328,21 +329,33 @@ export function Auth({ onLogin }: AuthProps) {
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    
     if (!forgotData.email) {
       toast.error('Digite seu e-mail')
       return
     }
-    
+    const normalizedEmail = forgotData.email.trim().toLowerCase()
+    if (!normalizedEmail) {
+      toast.error('Digite seu e-mail')
+      return
+    }
     setIsLoading(true)
     toast.loading('Enviando link de recuperação...', { id: 'forgot-loading' })
-    
-    setTimeout(() => {
+    try {
+      const result = await authService.forgotPassword(normalizedEmail)
       toast.dismiss('forgot-loading')
+      if (result.success) {
+        setForgotData({ email: '' })
+        toast.success(
+          result.message ||
+            'Enviamos as instruções para o seu e-mail. Verifique também a pasta de spam.',
+        )
+        setCurrentTab('login')
+      } else {
+        toast.error(result.error || 'Não foi possível enviar o link de recuperação.')
+      }
+    } finally {
       setIsLoading(false)
-      toast.success('Link de recuperação enviado! Verifique seu e-mail. 📧')
-      setCurrentTab('login')
-    }, 2000)
+    }
   }
 
   const handleCepChange = async (cep: string) => {

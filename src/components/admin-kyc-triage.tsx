@@ -4,6 +4,7 @@ import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { Input } from './ui/input'
 import { ScrollArea } from './ui/scroll-area'
+import { Tabs, TabsList, TabsTrigger } from './ui/tabs'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +20,6 @@ import { Textarea } from './ui/textarea'
 import {
   CheckCircle2,
   FileCheck,
-  FileWarning,
   Loader2,
   Search,
   XCircle,
@@ -33,7 +33,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
 
-type AdminKycStatusFilter = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL'
+type AdminKycStatusFilter = 'ALL'
 
 interface AdminKycTriageProps {
   onNavigate: (page: string) => void
@@ -45,10 +45,12 @@ interface GroupedKycByCompany {
   companyCity?: string | null
   companyState?: string | null
   companyCnpj?: string | null
+  status: 'APPROVED' | 'PENDING' | 'REJECTED'
   documents: KycDocument[]
 }
 
 type ViewMode = 'list' | 'detail'
+type CompanyTabFilter = 'ALL' | 'APPROVED' | 'PENDING' | 'REJECTED'
 
 const mapTypeToLabel = (type: string): string => {
   switch (type) {
@@ -86,9 +88,22 @@ const formatDateTime = (iso: string) => {
 }
 
 export function AdminKycTriage({ onNavigate }: AdminKycTriageProps) {
-  const [statusFilter, setStatusFilter] = useState<AdminKycStatusFilter>('PENDING')
+  const [statusFilter] = useState<AdminKycStatusFilter>('ALL')
+  const [companyTabFilter, setCompanyTabFilter] = useState<CompanyTabFilter>('ALL')
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
+  const [companiesSummary, setCompaniesSummary] = useState<Array<{
+    companyId: string
+    companyName: string
+    companyCity: string
+    companyState: string
+    companyCnpj: string
+    status: 'APPROVED' | 'PENDING' | 'REJECTED'
+    totalDocuments: number
+    approvedDocuments: number
+    pendingDocuments: number
+    rejectedDocuments: number
+  }>>([])
   const [documents, setDocuments] = useState<KycDocument[]>([])
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('list')
@@ -129,15 +144,37 @@ export function AdminKycTriage({ onNavigate }: AdminKycTriageProps) {
 
   const PAGE_SIZE = 50
 
-  const loadDocuments = async (filter: AdminKycStatusFilter, pageNum: number = 1) => {
+  const loadCompanies = async () => {
     setLoading(true)
     try {
-      const filters: { status?: string; page?: number; limit?: number } = {
+      const res = await kycDocumentsService.listCompanies()
+      if (res.success && res.data) {
+        const body = res.data as { data?: typeof companiesSummary }
+        const list = Array.isArray(body?.data)
+          ? body.data
+          : Array.isArray(res.data)
+            ? (res.data as typeof companiesSummary)
+            : []
+        setCompaniesSummary(list)
+      } else {
+        toast.error((res as any).error || 'Erro ao carregar empresas para triagem de KYC.')
+        setCompaniesSummary([])
+      }
+    } catch (error: any) {
+      toast.error(error?.message || 'Erro ao carregar empresas para triagem de KYC.')
+      setCompaniesSummary([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadDocuments = async (companyId: string, pageNum: number = 1) => {
+    setLoading(true)
+    try {
+      const filters: { page?: number; limit?: number; companyId: string } = {
         page: pageNum,
         limit: PAGE_SIZE,
-      }
-      if (filter !== 'ALL') {
-        filters.status = filter
+        companyId,
       }
 
       const res = await kycDocumentsService.list(filters)
@@ -177,30 +214,23 @@ export function AdminKycTriage({ onNavigate }: AdminKycTriageProps) {
   }
 
   useEffect(() => {
-    setPage(1)
-    void loadDocuments(statusFilter, 1)
+    void loadCompanies()
   }, [statusFilter])
 
   const companies: GroupedKycByCompany[] = useMemo(() => {
-    const safeDocs = Array.isArray(documents) ? documents : []
-    const byCompany = new Map<string, GroupedKycByCompany>()
-    for (const doc of safeDocs) {
-      const companyId = doc.companyId || 'sem-company'
-      const companyName = doc.companyName || 'Empresa não informada'
-      if (!byCompany.has(companyId)) {
-        byCompany.set(companyId, {
-          companyId,
-          companyName,
-          companyCity: doc.companyCity ?? null,
-          companyState: doc.companyState ?? null,
-          companyCnpj: doc.companyCnpj ?? null,
-          documents: [],
-        })
-      }
-      byCompany.get(companyId)!.documents.push(doc)
-    }
-
-    let result = Array.from(byCompany.values())
+    let result: GroupedKycByCompany[] = companiesSummary.map(item => ({
+      companyId: item.companyId || 'sem-company',
+      companyName: item.companyName || 'Empresa não informada',
+      companyCity: item.companyCity ?? null,
+      companyState: item.companyState ?? null,
+      companyCnpj: item.companyCnpj ?? null,
+      status: item.status,
+      documents: [
+        ...Array(item.pendingDocuments).fill({ status: 'PENDING' }),
+        ...Array(item.approvedDocuments).fill({ status: 'APPROVED' }),
+        ...Array(item.rejectedDocuments).fill({ status: 'REJECTED' }),
+      ] as KycDocument[],
+    }))
     if (search.trim()) {
       const term = search.toLowerCase()
       result = result.filter(company =>
@@ -211,7 +241,17 @@ export function AdminKycTriage({ onNavigate }: AdminKycTriageProps) {
     // Ordenar por nome da empresa
     result.sort((a, b) => a.companyName.localeCompare(b.companyName, 'pt-BR'))
     return result
-  }, [documents, search])
+  }, [companiesSummary, search])
+
+  const totalCompaniesCount = companies.length
+  const approvedCompaniesCount = companies.filter(company => company.status === 'APPROVED').length
+  const pendingCompaniesCount = companies.filter(company => company.status === 'PENDING').length
+  const rejectedCompaniesCount = companies.filter(company => company.status === 'REJECTED').length
+
+  const companiesByTab = useMemo(() => {
+    if (companyTabFilter === 'ALL') return companies
+    return companies.filter(company => company.status === companyTabFilter)
+  }, [companies, companyTabFilter])
 
   // Seleciona automaticamente a primeira empresa quando a lista muda
   useEffect(() => {
@@ -231,11 +271,15 @@ export function AdminKycTriage({ onNavigate }: AdminKycTriageProps) {
     }
   }, [companies, selectedCompanyId])
 
+  useEffect(() => {
+    if (!selectedCompanyId || viewMode !== 'detail') return
+    setPage(1)
+    void loadDocuments(selectedCompanyId, 1)
+  }, [selectedCompanyId, viewMode])
+
   const documentsForSelectedCompany: KycDocument[] = useMemo(() => {
-    const safeDocs = Array.isArray(documents) ? documents : []
-    if (!selectedCompanyId) return []
-    return safeDocs.filter(doc => (doc.companyId || 'sem-company') === selectedCompanyId)
-  }, [documents, selectedCompanyId])
+    return Array.isArray(documents) ? documents : []
+  }, [documents])
 
   // Carregar metadados extras da empresa selecionada (cidade/estado, etc.)
   useEffect(() => {
@@ -318,7 +362,10 @@ export function AdminKycTriage({ onNavigate }: AdminKycTriageProps) {
         return
       }
       toast.success('Documento aprovado com sucesso.')
-      void loadDocuments(statusFilter, page)
+      if (selectedCompanyId) {
+        void loadDocuments(selectedCompanyId, page)
+      }
+      void loadCompanies()
     } catch (error: any) {
       toast.error(error?.message || 'Erro ao aprovar documento.')
     }
@@ -332,16 +379,19 @@ export function AdminKycTriage({ onNavigate }: AdminKycTriageProps) {
         return
       }
       toast.success('Documento rejeitado com sucesso.')
-      void loadDocuments(statusFilter, page)
+      if (selectedCompanyId) {
+        void loadDocuments(selectedCompanyId, page)
+      }
+      void loadCompanies()
     } catch (error: any) {
       toast.error(error?.message || 'Erro ao rejeitar documento.')
     }
   }
 
-  const pendingCount = documents.filter(doc => doc.status === 'PENDING').length
+  const pendingCount = companiesSummary.reduce((total, company) => total + company.pendingDocuments, 0)
   // VIEW: Detalhe de empresa (aprovação de documentos) – página separada
   if (viewMode === 'detail' && selectedCompanyId) {
-    const company = companies.find(c => c.companyId === selectedCompanyId) || null
+    const company = companiesSummary.find(c => c.companyId === selectedCompanyId) || null
 
     return (
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
@@ -354,6 +404,8 @@ export function AdminKycTriage({ onNavigate }: AdminKycTriageProps) {
                 onClick={() => {
                   setViewMode('list')
                   setSelectedCompanyId(null)
+                  setDocuments([])
+                  setPagination(null)
                 }}
               >
                 <span aria-hidden>←</span>
@@ -370,7 +422,7 @@ export function AdminKycTriage({ onNavigate }: AdminKycTriageProps) {
               variant="outline"
               size="sm"
               className="gap-1.5 shrink-0"
-              onClick={() => loadDocuments(statusFilter, page)}
+              onClick={() => loadDocuments(selectedCompanyId, page)}
               disabled={loading}
             >
               {loading ? (
@@ -573,7 +625,7 @@ export function AdminKycTriage({ onNavigate }: AdminKycTriageProps) {
                                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                           <AlertDialogAction
                                             className="bg-red-600 hover:bg-red-700 text-white"
-                                            onClick={event => {
+                                            onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
                                               const form = (event.currentTarget.closest('[data-slot="alert-dialog-content"]') ?? undefined) as HTMLElement | undefined
                                               const textarea = form?.querySelector('textarea') as HTMLTextAreaElement | null
                                               const value = textarea?.value?.trim() ?? ''
@@ -623,7 +675,7 @@ export function AdminKycTriage({ onNavigate }: AdminKycTriageProps) {
             variant="outline"
             size="sm"
             className="gap-1"
-            onClick={() => loadDocuments(statusFilter, page)}
+            onClick={() => loadCompanies()}
             disabled={loading}
           >
             {loading ? (
@@ -655,7 +707,7 @@ export function AdminKycTriage({ onNavigate }: AdminKycTriageProps) {
                     Fila de KYC
                   </CardTitle>
                   <CardDescription className="text-xs sm:text-sm">
-                    Filtre por status e busque por empresa
+                    Busque por empresa
                   </CardDescription>
                 </div>
               </div>
@@ -668,31 +720,6 @@ export function AdminKycTriage({ onNavigate }: AdminKycTriageProps) {
             </div>
           </CardHeader>
           <CardContent className="space-y-4 px-4 sm:px-6 pb-5">
-            <div className="flex flex-wrap gap-2">
-              {[
-                { id: 'PENDING' as AdminKycStatusFilter, label: 'Pendentes', icon: FileWarning },
-                { id: 'APPROVED' as AdminKycStatusFilter, label: 'Aprovados', icon: CheckCircle2 },
-                { id: 'REJECTED' as AdminKycStatusFilter, label: 'Rejeitados', icon: XCircle },
-                { id: 'ALL' as AdminKycStatusFilter, label: 'Todos', icon: FileCheck },
-              ].map(option => {
-                const Icon = option.icon
-                const isActive = statusFilter === option.id
-                return (
-                  <Button
-                    key={option.id}
-                    type="button"
-                    variant={isActive ? 'default' : 'outline'}
-                    size="sm"
-                    className={`gap-1 ${isActive ? 'bg-aumigo-teal text-white' : ''}`}
-                    onClick={() => setStatusFilter(option.id)}
-                  >
-                    <Icon className="h-3 w-3" />
-                    {option.label}
-                  </Button>
-                )
-              })}
-            </div>
-
             <div className="flex h-9 items-center gap-2 rounded-md border border-aumigo-teal/20 bg-background px-3 focus-within:border-aumigo-teal focus-within:ring-2 focus-within:ring-aumigo-teal/20">
               <Search className="h-4 w-4 shrink-0 text-aumigo-gray" aria-hidden />
               <Input
@@ -716,16 +743,29 @@ export function AdminKycTriage({ onNavigate }: AdminKycTriageProps) {
                 Clique em uma empresa para abrir a página de aprovação de documentos.
               </CardDescription>
             <Badge variant="secondary" className="text-xs sm:text-sm w-fit">
-              {companies.length} empresa(s)
+              {companiesByTab.length} de {totalCompaniesCount} empresa(s)
             </Badge>
             </div>
           </CardHeader>
           <CardContent className="p-0">
+            <div className="px-4 sm:px-6 pb-3">
+              <Tabs
+                value={companyTabFilter}
+                onValueChange={(value: string) => setCompanyTabFilter(value as CompanyTabFilter)}
+              >
+                <TabsList className="w-full grid grid-cols-2 md:grid-cols-4 h-auto gap-1">
+                  <TabsTrigger value="ALL">Todos ({totalCompaniesCount})</TabsTrigger>
+                  <TabsTrigger value="APPROVED">Aprovados ({approvedCompaniesCount})</TabsTrigger>
+                  <TabsTrigger value="PENDING">Pendentes ({pendingCompaniesCount})</TabsTrigger>
+                  <TabsTrigger value="REJECTED">Recusados ({rejectedCompaniesCount})</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-aumigo-orange" />
               </div>
-            ) : companies.length === 0 ? (
+            ) : companiesByTab.length === 0 ? (
               <p className="px-4 sm:px-6 py-8 text-sm text-aumigo-gray">
                 Nenhuma empresa com documentos para os filtros selecionados.
               </p>
@@ -733,7 +773,7 @@ export function AdminKycTriage({ onNavigate }: AdminKycTriageProps) {
               <>
                 <ScrollArea className="max-h-[520px] px-3 sm:px-4 pb-4">
                   <div className="flex flex-col gap-4">
-                    {companies.map(company => {
+                    {companiesByTab.map(company => {
                     const pending = company.documents.filter(d => d.status === 'PENDING').length
                     const approved = company.documents.filter(d => d.status === 'APPROVED').length
                     const rejected = company.documents.filter(d => d.status === 'REJECTED').length
@@ -768,6 +808,7 @@ export function AdminKycTriage({ onNavigate }: AdminKycTriageProps) {
                         type="button"
                         onClick={() => {
                           setSelectedCompanyId(company.companyId)
+                          setSelectedCompanyName(company.companyName)
                           setViewMode('detail')
                         }}
                         className="w-full px-3 flex items-start sm:items-center justify-between gap-3 rounded-lg border border-border bg-card pl-3 pr-3 py-3 text-left transition-colors cursor-pointer hover:bg-muted/40"
@@ -805,44 +846,6 @@ export function AdminKycTriage({ onNavigate }: AdminKycTriageProps) {
                   })}
                   </div>
                 </ScrollArea>
-                {pagination && pagination.totalPages > 1 && (
-                  <div className="flex items-center justify-between gap-2 border-t px-4 py-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={!pagination.hasPreviousPage || loading}
-                      onClick={() => {
-                        const nextPage = page - 1
-                        setPage(nextPage)
-                        void loadDocuments(statusFilter, nextPage)
-                      }}
-                    >
-                      Anterior
-                    </Button>
-                    <span className="text-sm text-muted-foreground">
-                      Página {pagination.page} de {pagination.totalPages}
-                      {pagination.total > 0 && (
-                        <span className="ml-1">
-                          ({pagination.total} documento(s))
-                        </span>
-                      )}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={!pagination.hasNextPage || loading}
-                      onClick={() => {
-                        const nextPage = page + 1
-                        setPage(nextPage)
-                        void loadDocuments(statusFilter, nextPage)
-                      }}
-                    >
-                      Próxima
-                    </Button>
-                  </div>
-                )}
               </>
             )}
           </CardContent>

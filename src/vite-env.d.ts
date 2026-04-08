@@ -5,3 +5,5 @@ declare module 'figma:asset/*' {
   export default src;
 }
 
+declare module '*.css';
+

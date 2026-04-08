@@ -1,0 +1,66 @@
+.pro-coupons-page {
+  width: 100%;
+}
+
+.pro-coupons-form-header {
+  flex-wrap: wrap;
+}
+
+.pro-coupons-mobile-list {
+  display: none;
+}
+
+.pro-coupons-desktop-table {
+  display: block;
+  overflow-x: auto;
+}
+
+.pro-coupons-desktop-table table {
+  min-width: 980px;
+}
+
+.pro-coupons-mobile-card {
+  background: #fff;
+}
+
+.pro-coupons-tabs-list {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  height: auto;
+  gap: 6px;
+}
+
+.pro-coupons-tabs-list [data-slot='tabs-trigger'] {
+  min-height: 36px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.2;
+  padding: 6px 8px;
+}
+
+@media (max-width: 1180px) {
+  .pro-coupons-desktop-table {
+    display: none;
+  }
+
+  .pro-coupons-mobile-list {
+    display: block;
+  }
+
+  .pro-coupons-tabs-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+
+  .pro-coupons-form-header > p {
+    width: 100%;
+  }
+
+  .pro-coupons-form-header > button {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -9,6 +9,7 @@ import { ProFinance } from './components/pro-finance'
 import { ProReviews } from './components/pro-reviews'
 import { ProChatLive } from './components/pro-chat-live'
 import { ProSettings } from './components/pro-settings'
+import { ProCoupons } from './components/pro-coupons'
 import { ProNotifications } from './components/pro-notifications'
 import { ProAds } from './components/pro-ads'
 import { Auth } from './components/auth'
@@ -29,6 +30,8 @@ import { OnboardingCompany } from './components/onboarding-company'
 import { Toaster } from './components/ui/sonner'
 import { useAuth } from './contexts/AuthContext'
 import { useRouter } from './hooks/useRouter'
+import { authService } from './services/auth.service'
+import { ResetPasswordTokenScreen } from './components/auth/ResetPasswordTokenScreen'
 import exampleImage from './assets/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
 
 interface User {
@@ -196,6 +199,8 @@ export default function App() {
           return <ProChatLive />
         case 'settings':
           return <ProSettings />
+        case 'coupons':
+          return <ProCoupons />
         case 'notifications':
           return <ProNotifications />
         default:
@@ -233,6 +238,19 @@ export default function App() {
           </p>
         </div>
       </div>
+    )
+  }
+
+  if (currentPath === '/reset-password') {
+    return (
+      <>
+        <ResetPasswordTokenScreen
+          authApi={authService}
+          appName="AuMigoPet PRO"
+          onGoToLogin={() => navigate('/pro/overview')}
+        />
+        <Toaster />
+      </>
     )
   }
 

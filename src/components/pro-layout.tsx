@@ -15,7 +15,8 @@ import {
   Settings,
   FileText,
   Megaphone,
-  Bell
+  Bell,
+  TicketPercent,
 } from 'lucide-react'
 import exampleImage from '../assets/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
 
@@ -49,6 +50,7 @@ const navigationItems = [
   { id: 'reviews', label: 'Avaliações', icon: Star },
   { id: 'chat', label: 'Conversas', icon: MessageSquare },
   { id: 'notifications', label: 'Notificações', icon: Bell },
+  { id: 'coupons', label: 'Cupons', icon: TicketPercent },
   { id: 'settings', label: 'Configurações', icon: Settings },
 ]
 

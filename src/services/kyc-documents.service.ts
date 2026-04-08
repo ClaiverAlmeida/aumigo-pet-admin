@@ -77,6 +77,19 @@ export interface CreateMyKycDocumentsDto {
   notes?: string;
 }
 
+export interface KycCompanySummary {
+  companyId: string;
+  companyName: string;
+  companyCity: string;
+  companyState: string;
+  companyCnpj: string;
+  status: 'APPROVED' | 'PENDING' | 'REJECTED';
+  totalDocuments: number;
+  approvedDocuments: number;
+  pendingDocuments: number;
+  rejectedDocuments: number;
+}
+
 /**
  * 🆔 SERVIÇO DE KYC DOCUMENTS
  * Gerencia documentos KYC dos profissionais
@@ -87,6 +100,7 @@ export class KycDocumentsService {
    */
   async list(filters?: {
     providerId?: string;
+    companyId?: string;
     status?: string;
     type?: string;
     page?: number;
@@ -96,6 +110,14 @@ export class KycDocumentsService {
       params: { page: 1, limit: 50, ...filters },
       useCache: true,
       cacheTtl: 60000, // 1 minuto
+    });
+  }
+
+  async listCompanies(params?: { q?: string }) {
+    return api.get<KycCompanySummary[]>('/kyc-companies', {
+      params,
+      useCache: true,
+      cacheTtl: 60000,
     });
   }
 

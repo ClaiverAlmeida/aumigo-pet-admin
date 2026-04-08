@@ -514,7 +514,15 @@ export function ProKycDocumentsSection() {
                   <ShieldCheck className="h-3 w-3" />
                   KYC aprovado
                 </Badge>
-             
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => setIsEditingDocuments(true)}
+                >
+                  <UploadCloud className="h-4 w-4" />
+                  Enviar novamente
+                </Button>
               </div>
             </div>
           ) : (

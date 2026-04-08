@@ -6,7 +6,7 @@ import { Label } from './ui/label'
 import { Alert, AlertDescription } from './ui/alert'
 import { Checkbox } from './ui/checkbox'
 import { ImageWithFallback } from './figma/ImageWithFallback'
-import exampleImage from 'figma:asset/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
+import exampleImage from '../assets/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
 import {
   Eye,
   EyeOff,
@@ -21,7 +21,6 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../contexts/AuthContext'
-import { useRouter } from '../hooks/useRouter'
 
 interface AdminUser {
   id: string
@@ -38,7 +37,6 @@ interface AdminAuthProps {
 
 export function AdminAuth({ onLogin }: AdminAuthProps) {
   const { signInAdmin } = useAuth()
-  const { navigate } = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   
@@ -53,6 +51,12 @@ export function AdminAuth({ onLogin }: AdminAuthProps) {
   })
 
   const [showForgotPassword, setShowForgotPassword] = useState(false)
+
+  // Handler for redirection to the professional panel
+  const handleGoToProfessionalPanel = () => {
+    // Substitua '/profissional' pelo path real do painel profissional, se diferente!
+    window.location.href = '/profissional'
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -174,6 +178,14 @@ export function AdminAuth({ onLogin }: AdminAuthProps) {
                     onClick={() => setShowForgotPassword(false)}
                   >
                     Voltar ao Login
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full mt-2 border-blue-500 text-blue-700 hover:bg-blue-50 hover:border-blue-700"
+                    onClick={handleGoToProfessionalPanel}
+                  >
+                    Ir para Painel Profissional
                   </Button>
                 </div>
               </form>
@@ -343,14 +355,13 @@ export function AdminAuth({ onLogin }: AdminAuthProps) {
                     {isLoading ? 'Validando...' : 'Acessar Painel Admin'}
                     {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
                   </Button>
-
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full h-12 text-base border-gray-300"
-                    onClick={() => navigate('/pro/overview')}
+                    className="w-full mt-2 border-blue-500 text-blue-700 hover:bg-blue-50 hover:border-blue-700"
+                    onClick={handleGoToProfessionalPanel}
                   >
-                    Ir para o Painel Profissional
+                    Ir para Painel Profissional
                   </Button>
                 </form>
               </CardContent>
