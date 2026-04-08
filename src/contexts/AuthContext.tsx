@@ -1,8 +1,18 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { authService } from '../services/auth.service';
 import { authProService } from '../services/auth-pro.service';
 import { getUserFromToken } from '../services/jwt';
 import { usersService } from '../services/users.service';
+import { router } from '../utils/router';
+import {
+  getAccessTokenForRealm,
+} from '../services/auth-session.storage';
+
+/** Rotas do painel Admin: não dispara GET /users/me da sessão Pro (evita expor payload completo no Network). */
+function isAdminRoutePath(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.location.pathname.startsWith('/admin');
+}
 
 interface User {
   id: string;
@@ -70,14 +80,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  /** true se a sessão Pro foi restaurada sem GET /users/me por estar em rota /admin */
+  const skippedProProfileFetchRef = useRef(false);
 
   // Função para carregar dados completos do usuário do backend
-  const loadUserProfile = async (userId: string, accessToken: string) => {
+  const loadUserProfile = useCallback(async (userId: string, token: string) => {
     try {
-      const result = await usersService.getMyProfile();
+      const result = await usersService.getMyProfile(token);
       if (result.success && result.data) {
         const profileData = result.data;
-        const tokenUser = getUserFromToken(accessToken);
+        const tokenUser = getUserFromToken(token);
         
         // Mesclar dados do perfil com dados do token
         const userData: User = {
@@ -102,14 +114,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Error loading user profile:', error);
     }
     return null;
-  };
+  }, []);
 
-  // Carrega dados do admin a partir da API (como no Pro), para nome/foto sincronizarem
-  const loadAdminProfile = async (): Promise<AdminUser | null> => {
-    const token = localStorage.getItem('auth_token');
+  // GET /users/me — sessão Admin (sempre que houver aumigopet_admin + token; ex.: login e refresh do painel)
+  const loadAdminProfile = useCallback(async (): Promise<AdminUser | null> => {
+    const token = getAccessTokenForRealm('admin');
     if (!token) return null;
     try {
-      const result = await usersService.getMyProfile();
+      const result = await usersService.getMyProfile(token);
       if (result.success && result.data) {
         const profileData = result.data;
         const tokenUser = getUserFromToken(token);
@@ -130,42 +142,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Error loading admin profile:', error);
     }
     return null;
-  };
+  }, []);
 
   // Check for existing session on mount - Seguindo EXATAMENTE o padrão do app
   useEffect(() => {
     const checkSession = async () => {
       try {
-        // Verificar usuário profissional - Seguindo padrão do app
+        const adminToken = getAccessTokenForRealm('admin');
+        const proToken = getAccessTokenForRealm('pro');
+        setAccessToken(adminToken ?? proToken ?? null);
+
+        // 1) Admin primeiro: com sessão admin sempre dispara GET /users/me (independente da rota)
+        const storedAdminUser = localStorage.getItem('aumigopet_admin');
+        if (storedAdminUser && adminToken) {
+          try {
+            const parsed = JSON.parse(storedAdminUser);
+            setAdminUser(parsed);
+            await loadAdminProfile();
+          } catch {
+            /* ignore JSON inválido */
+          }
+        }
+
+        // 2) Profissional (Pro): hidrata estado; em /admin/* não dispara /me com token Pro
         const storedUser = localStorage.getItem('aumigopet_user');
-        const storedAccessToken = localStorage.getItem('auth_token');
-        
-        if (storedUser && storedAccessToken) {
+        if (storedUser && proToken) {
           const parsedUser = JSON.parse(storedUser);
-          
-          // Mapear avatar para profilePicture se necessário (compatibilidade)
+
           if (parsedUser.avatar && !parsedUser.profilePicture) {
             parsedUser.profilePicture = parsedUser.avatar;
             delete parsedUser.avatar;
             localStorage.setItem('aumigopet_user', JSON.stringify(parsedUser));
           }
-          
-          setUser(parsedUser);
-          setAccessToken(storedAccessToken);
-          
-          // Carregar dados completos do backend para garantir que profilePicture está atualizado
-          if (parsedUser.id) {
-            await loadUserProfile(parsedUser.id, storedAccessToken);
-          }
-        }
 
-        // Verificar admin: carregar da API (como no Pro) para nome/foto sincronizarem
-        const storedAdminUser = localStorage.getItem('aumigopet_admin');
-        const storedAdminToken = localStorage.getItem('auth_token');
-        if (storedAdminUser && storedAdminToken) {
-          const parsed = JSON.parse(storedAdminUser);
-          setAdminUser(parsed);
-          await loadAdminProfile();
+          setUser(parsedUser);
+
+          if (parsedUser.id) {
+            if (isAdminRoutePath()) {
+              skippedProProfileFetchRef.current = true;
+            } else {
+              await loadUserProfile(parsedUser.id, proToken);
+            }
+          }
         }
       } catch (error) {
         console.log('Error checking session:', error);
@@ -175,7 +193,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     checkSession();
-  }, []);
+  }, [loadUserProfile, loadAdminProfile]);
+
+  // Ao sair de /admin/* para o painel Pro, sincroniza perfil (única vez após ter pulado GET /users/me)
+  useEffect(() => {
+    const onRoute = () => {
+      if (typeof window === 'undefined') return;
+      if (window.location.pathname.startsWith('/admin')) return;
+      if (!skippedProProfileFetchRef.current) return;
+      const token = getAccessTokenForRealm('pro');
+      const stored = localStorage.getItem('aumigopet_user');
+      if (!token || !stored) {
+        skippedProProfileFetchRef.current = false;
+        return;
+      }
+      try {
+        const parsed = JSON.parse(stored) as { id?: string };
+        if (parsed?.id) {
+          skippedProProfileFetchRef.current = false;
+          void loadUserProfile(parsed.id, token);
+        }
+      } catch {
+        skippedProProfileFetchRef.current = false;
+      }
+    };
+
+    return router.addListener(onRoute);
+  }, [loadUserProfile]);
 
   // Login profissional - Seguindo EXATAMENTE o padrão do app
   const signIn = async (email: string, password: string) => {
@@ -202,15 +246,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         
         setUser(initialUserData);
-        setAccessToken(result.data.access_token);
-        // Uma sessão por vez: limpar sessão admin ao logar como pro
-        setAdminUser(null);
-        localStorage.removeItem('aumigopet_admin');
+        setAccessToken(
+          getAccessTokenForRealm('admin') ?? result.data.access_token,
+        );
 
-        // Store in localStorage - Seguindo EXATAMENTE o padrão do app
+        // authProService.login já grava tokens Pro; enriquecer perfil em LS
         localStorage.setItem('aumigopet_user', JSON.stringify(initialUserData));
-        localStorage.setItem('refresh_token', result.data.refresh_token);
-        localStorage.setItem('auth_token', result.data.access_token);
 
         // Carregar dados completos do backend após login para garantir profilePicture atualizado
         if (userId) {
@@ -272,7 +313,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
 
         setUser(userData);
-        setAccessToken(result.data.access_token);
+        setAccessToken(
+          getAccessTokenForRealm('admin') ?? result.data.access_token,
+        );
 
         // Garantir que o user salvo tenha os campos do cadastro (telefone/categoria)
         localStorage.setItem('aumigopet_user', JSON.stringify(userData));
@@ -302,17 +345,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
 
         setAdminUser(adminData);
-        setAccessToken(result.data.access_token);
-        // Uma sessão por vez: limpar sessão pro ao logar como admin
-        setUser(null);
-        localStorage.removeItem('aumigopet_user');
+        setAccessToken(
+          getAccessTokenForRealm('pro') ?? result.data.access_token,
+        );
 
-        // Store in localStorage - Seguindo padrão do app
         localStorage.setItem('aumigopet_admin', JSON.stringify(adminData));
-        localStorage.setItem('refresh_token', result.data.refresh_token);
-        localStorage.setItem('auth_token', result.data.access_token);
 
-        await loadAdminProfile();
+        // Com sessão Pro ainda ativa, não dispara GET /users/me no login admin (fluxos independentes).
+        const proSessionActive = Boolean(getAccessTokenForRealm('pro'));
+        if (!proSessionActive) {
+          await loadAdminProfile();
+        }
 
         return { success: true };
       } else {
@@ -326,14 +369,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logout profissional - Seguindo EXATAMENTE o padrão do app
   const signOut = async () => {
     try {
-      // Usar serviço real de logout - Seguindo EXATAMENTE o padrão do app
       await authProService.logout();
-      
       setUser(null);
-      setAccessToken(null);
-      localStorage.removeItem('aumigopet_user');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('auth_token');
+      setAccessToken(getAccessTokenForRealm('admin'));
     } catch (error) {
       console.log('Sign out error:', error);
     }
@@ -342,14 +380,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logout admin - Seguindo EXATAMENTE o padrão do app
   const signOutAdmin = async () => {
     try {
-      // Usar serviço real de logout - Seguindo EXATAMENTE o padrão do app
       await authService.logout();
-      
       setAdminUser(null);
-      setAccessToken(null);
-      localStorage.removeItem('aumigopet_admin');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('auth_token');
+      setAccessToken(getAccessTokenForRealm('pro'));
     } catch (error) {
       console.log('Sign out error:', error);
     }
@@ -363,7 +396,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Atualizar no backend
-      const result = await usersService.updateMyProfile(updates);
+      const proTok = getAccessTokenForRealm('pro');
+      const result = await usersService.updateMyProfile(
+        updates,
+        proTok ?? undefined,
+      );
       
       if (result.success && result.data) {
         const updatedUser = { ...user, ...result.data };

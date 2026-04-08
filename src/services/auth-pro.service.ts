@@ -1,5 +1,6 @@
 import { api } from "./api.service";
 import { getUserFromToken } from "./jwt";
+import { AUTH_SESSION } from "./auth-session.storage";
 
 export interface AuthUser {
   id: string;
@@ -23,9 +24,9 @@ export interface AuthState {
 }
 
 export class AuthProService {
-  private readonly tokenKey = 'auth_token';
-  private readonly refreshTokenKey = 'refresh_token';
-  private readonly userKey = 'aumigopet_user'; // Chave para profissionais (modo PRO)
+  private readonly tokenKey = AUTH_SESSION.pro.access;
+  private readonly refreshTokenKey = AUTH_SESSION.pro.refresh;
+  private readonly userKey = AUTH_SESSION.pro.user;
 
   // Estado reativo (similar ao Angular signals)
   private authState: AuthState = {
@@ -172,7 +173,7 @@ export class AuthProService {
 
     try {
       // Tentar fazer logout no servidor (opcional)
-      const refreshToken = localStorage.getItem('refresh_token');
+      const refreshToken = localStorage.getItem(this.refreshTokenKey);
       if (refreshToken) {
         await api.post("/auth/logout", { refreshToken });
       }

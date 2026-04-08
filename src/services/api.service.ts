@@ -1,4 +1,12 @@
-import axios, { AxiosInstance } from "axios";
+import axios, { AxiosInstance, InternalAxiosRequestConfig } from "axios";
+import {
+  getPathAuthRealm,
+  getAccessTokenForRealm,
+  getRefreshTokenForRealm,
+  setTokensForRealm,
+  clearRealmSession,
+  type AuthRealm,
+} from "./auth-session.storage";
 
 // Configuração da API
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -63,13 +71,25 @@ class ApiService {
   private setupInterceptors(): void {
     // Interceptor de requisição - Adiciona token automaticamente
     this.axiosInstance.interceptors.request.use(
-      (config) => {
-        const rawToken = localStorage.getItem("auth_token");
-        if (rawToken) {
-          const token = rawToken.trim().replace(/^"+|"+$/g, "");
-          if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-          }
+      (config: InternalAxiosRequestConfig & { _authRealm?: AuthRealm }) => {
+        const urlStr = String(config.url || "");
+        if (urlStr.includes("/auth/refresh")) {
+          config._authRealm = getPathAuthRealm();
+          delete config.headers.Authorization;
+          return config;
+        }
+        const realm = getPathAuthRealm();
+        config._authRealm = realm;
+        const authHeader = config.headers?.Authorization;
+        if (
+          typeof authHeader === "string" &&
+          authHeader.startsWith("Bearer ")
+        ) {
+          return config;
+        }
+        const token = getAccessTokenForRealm(realm);
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
       },
@@ -93,32 +113,31 @@ class ApiService {
         ) {
           originalRequest._retry = true;
 
+          const realm: AuthRealm =
+            (originalRequest as { _authRealm?: AuthRealm })._authRealm ??
+            getPathAuthRealm();
+
           try {
-            const refreshToken = localStorage.getItem("refresh_token");
+            const refreshToken = getRefreshTokenForRealm(realm);
             if (refreshToken) {
               const response = await this.axiosInstance.post("/auth/refresh", {
-                refreshToken: refreshToken.trim().replace(/^"+|"+$/g, ""),
+                refreshToken,
               });
 
-              // Atualizar tokens
-              localStorage.setItem("auth_token", response.data.access_token);
-              localStorage.setItem(
-                "refresh_token",
+              setTokensForRealm(
+                realm,
+                response.data.access_token,
                 response.data.refresh_token
               );
 
-              // Reenviar requisição com novo token
               originalRequest.headers.Authorization = `Bearer ${response.data.access_token}`;
               return this.axiosInstance(originalRequest);
             }
           } catch (refreshError) {
-            // Se refresh falhar, limpar tokens e redirecionar
-            localStorage.removeItem("auth_token");
-            localStorage.removeItem("refresh_token");
-            localStorage.removeItem("aumigopet_admin");
-
+            clearRealmSession(realm);
             if (typeof window !== "undefined") {
-              window.location.href = "/admin";
+              window.location.href =
+                realm === "admin" ? "/admin/login" : "/pro/overview";
             }
           }
         }

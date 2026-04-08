@@ -202,11 +202,14 @@ export class UsersService {
   /**
    * Busca o perfil do usuário logado
    */
-  async getMyProfile(): Promise<{ success: boolean; data?: User; error?: string }> {
+  async getMyProfile(bearerToken?: string): Promise<{ success: boolean; data?: User; error?: string }> {
     try {
+      // Sem cache: a chave global não distinguia Bearer; com Pro+Admin na mesma SPA, /me podia devolver perfil errado.
       const result = await api.get<{ data: User }>('/users/me', {
-        useCache: true,
-        cacheTtl: 2 * 60 * 1000, // 2 minutos
+        useCache: false,
+        ...(bearerToken
+          ? { headers: { Authorization: `Bearer ${bearerToken}` } }
+          : {}),
       });
 
       if (result.success && result.data) {
@@ -242,7 +245,10 @@ export class UsersService {
   /**
    * Atualiza o perfil do usuário logado
    */
-  async updateMyProfile(data: UpdateUserData): Promise<{ success: boolean; data?: User; error?: string }> {
+  async updateMyProfile(
+    data: UpdateUserData,
+    bearerToken?: string,
+  ): Promise<{ success: boolean; data?: User; error?: string }> {
     try {
       // Inclui no payload apenas campos presentes; null é enviado para limpar (ex.: profilePicture)
       const cleanData: any = {};
@@ -253,7 +259,11 @@ export class UsersService {
         }
       });
 
-      const result = await api.patch<{ data: User }>('/users/me', cleanData);
+      const result = await api.patch<{ data: User }>('/users/me', cleanData, {
+        ...(bearerToken
+          ? { headers: { Authorization: `Bearer ${bearerToken}` } }
+          : {}),
+      });
 
       if (result.success && result.data) {
         const backendResponse = result.data as any;

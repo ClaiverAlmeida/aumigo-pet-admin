@@ -21,6 +21,7 @@ import {
 import { toast } from 'sonner'
 import { useAuth } from '../contexts/AuthContext'
 import { api } from '../services/api.service'
+import { setTokensForRealm } from '../services/auth-session.storage'
 import { getUserFromToken } from '../services/jwt'
 import exampleImage from '../assets/8dfcc005426cdf14f94213dc79b85192818ffd4b.png'
 import { lookupCep } from '../utils/viacep'
@@ -167,11 +168,11 @@ export function OnboardingCompany({ onComplete, user }: OnboardingCompanyProps) 
         toast.dismiss('upgrade-loading')
 
         if (result.success && result.data?.access_token) {
-          // Atualizar token
-          localStorage.setItem('auth_token', result.data.access_token)
-          if (result.data.refresh_token) {
-            localStorage.setItem('refresh_token', result.data.refresh_token)
-          }
+          setTokensForRealm(
+            'pro',
+            result.data.access_token,
+            result.data.refresh_token,
+          );
 
           // Decodificar token para pegar dados atualizados do usuário
           const tokenUser = getUserFromToken(result.data.access_token)

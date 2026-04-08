@@ -291,11 +291,7 @@ export default function App() {
       </div>
     )
   } else {
-    // Admin logado não pode acessar painel pro: redirecionar para admin
-    if (adminUser) {
-      navigate('/admin/dashboard')
-      return null
-    }
+    // Pro e Admin podem estar logados em paralelo; a URL (/pro vs /admin) define o painel.
 
     // Se não há usuário logado, mostrar tela de autenticação profissional
     if (!user) {

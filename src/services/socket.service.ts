@@ -1,12 +1,16 @@
 import { io, Socket } from "socket.io-client";
 import type { ChatMessage } from "./chat.service";
+import {
+  getAccessTokenForRealm,
+  getPathAuthRealm,
+} from "./auth-session.storage";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 let socket: Socket | null = null;
 
 function getToken(): string | null {
-  return localStorage.getItem("auth_token");
+  return getAccessTokenForRealm(getPathAuthRealm());
 }
 
 function getSocket(): Socket | null {

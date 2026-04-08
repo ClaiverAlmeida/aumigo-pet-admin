@@ -1,5 +1,6 @@
 import { api } from "./api.service";
 import { getUserFromToken } from "./jwt";
+import { AUTH_SESSION } from "./auth-session.storage";
 
 export interface AuthUser {
   id: string;
@@ -19,9 +20,9 @@ export interface AuthState {
 }
 
 export class AuthService {
-  private readonly tokenKey = 'auth_token';
-  private readonly refreshTokenKey = 'refresh_token';
-  private readonly userKey = 'aumigopet_admin'; // Chave específica para admin
+  private readonly tokenKey = AUTH_SESSION.admin.access;
+  private readonly refreshTokenKey = AUTH_SESSION.admin.refresh;
+  private readonly userKey = AUTH_SESSION.admin.user;
 
   // Estado reativo (similar ao Angular signals)
   private authState: AuthState = {
@@ -124,7 +125,7 @@ export class AuthService {
     try {
       // Tentar fazer logout no servidor (opcional)
       // IMPORTANTE: Fazer logout ANTES de limpar o auth para manter o token
-      const refreshToken = localStorage.getItem('refresh_token');
+      const refreshToken = localStorage.getItem(this.refreshTokenKey);
       if (refreshToken) {
         await api.post("/auth/logout", { refreshToken });
       }
