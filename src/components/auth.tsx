@@ -28,6 +28,8 @@ import {
   Star,
   Heart,
   Scissors,
+  Car,
+  UserRound,
   Globe,
   FileText,
   Loader2
@@ -91,11 +93,13 @@ export function Auth({ onLogin }: AuthProps) {
   const specialties = [
     // Alinhado com enum ServiceCategory (prisma/schema.prisma)
     { value: 'VETERINARY', label: 'Veterinário', icon: Heart },
-    { value: 'HOSPITAL', label: 'Emergência', icon: Heart },
+    { value: 'HOSPITAL', label: 'Hospital Veterinário', icon: Heart },
     { value: 'GROOMING', label: 'Banho e Tosa', icon: Scissors },
     { value: 'TRAINING', label: 'Adestramento', icon: Star },
     { value: 'WALKER', label: 'Passeador', icon: PawPrint },
     { value: 'HOTEL', label: 'Hotel para Pets', icon: PawPrint },
+    { value: 'TRANSPORT', label: 'Transporte pet', icon: Car },
+    { value: 'PET_SITTER', label: 'Pet Sitter', icon: UserRound },
     { value: 'PET_SHOP', label: 'Pet Shop', icon: Building },
     { value: 'FARMACY', label: 'Farmácia', icon: Building },
     { value: 'OTHER', label: 'Outro', icon: Building },

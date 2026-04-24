@@ -55,7 +55,9 @@ const categoryMapping: Record<string, string> = {
   'banho_tosa': 'GROOMING',
   'adestramento': 'TRAINING',
   'veterinario': 'VETERINARY',
-  'hospedagem': 'HOTEL'
+  'hospedagem': 'HOTEL',
+  'transporte_pet': 'TRANSPORT',
+  'pet_sitter': 'PET_SITTER'
 }
 
 const categoryReverseMapping: Record<string, string> = {
@@ -67,6 +69,8 @@ const categoryReverseMapping: Record<string, string> = {
   'FARMACY': 'veterinario',
   'WALKER': 'adestramento',
   'HOSPITAL': 'veterinario',
+  'TRANSPORT': 'transporte_pet',
+  'PET_SITTER': 'pet_sitter',
   'OTHER': 'veterinario'
 }
 
@@ -74,7 +78,9 @@ const categories = {
   banho_tosa: 'Banho & Tosa',
   adestramento: 'Adestramento',
   veterinario: 'Veterinário',
-  hospedagem: 'Hospedagem'
+  hospedagem: 'Hospedagem',
+  transporte_pet: 'Transporte pet',
+  pet_sitter: 'Pet Sitter'
 }
 
 // Mapear Service do backend para formato do frontend
@@ -111,6 +117,8 @@ const serviceCategoryLabels: Record<string, string> = {
   'WALKER': 'Passeador',
   'TRAINING': 'Adestramento',
   'HOSPITAL': 'Hospital Veterinário',
+  'TRANSPORT': 'Transporte pet',
+  'PET_SITTER': 'Pet Sitter',
   'OTHER': 'Outro'
 }
 

@@ -38,6 +38,8 @@ const SERVICE_CATEGORY_LABEL: Record<string, string> = {
   WALKER: 'Passeador',
   TRAINING: 'Adestramento',
   HOSPITAL: 'Hospital veterinário',
+  TRANSPORT: 'Transporte pet',
+  PET_SITTER: 'Pet sitter',
   OTHER: 'Outro',
 }
 

@@ -93,6 +93,16 @@ function getCompanyCategoryConfig(category?: string): {
         label: 'Adestramento',
         badgeClassName: 'bg-sky-100 text-sky-900 border border-sky-200',
       }
+    case 'TRANSPORT':
+      return {
+        label: 'Transporte pet',
+        badgeClassName: 'bg-sky-100 text-sky-900 border border-sky-200',
+      }
+    case 'PET_SITTER':
+      return {
+        label: 'Pet sitter',
+        badgeClassName: 'bg-sky-100 text-sky-900 border border-sky-200',
+      }
     case 'OTHER':
       return {
         label: 'Serviço especializado para pets',
