@@ -1,12 +1,14 @@
 import { api } from './api.service';
 
-export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'DONE' | 'CANCELLED';
+export type BookingStatus = 'PENDING' | 'AWAITING_PAYMENT' | 'CONFIRMED' | 'DONE' | 'CANCELLED';
+export type PaymentFlowType = 'INSTANT_BOOKING' | 'AFTER_PROVIDER_CONFIRMATION' | 'NEGOTIATED_VIA_CHAT';
 
 export interface Booking {
   id: string;
   date: string; // ISO string
   time: string; // HH:MM
   status: BookingStatus;
+  paymentFlowType?: PaymentFlowType;
   notes?: string;
   price: number; // em centavos
   address?: string;
@@ -20,10 +22,11 @@ export interface Booking {
   petName?: string;
   // Dados completos dos relacionamentos (se necessário)
   service?: { id: string; name: string; price: number };
-  customer?: { id: string; name: string; email: string; phone?: string };
+  customer?: { id: string; name: string; email: string; phone?: string; profilePicture?: string };
   pet?: { 
     id: string; 
     name: string; 
+    avatar?: string;
     species?: string; 
     breed?: string; 
     gender?: string; 
@@ -32,6 +35,13 @@ export interface Booking {
   };
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ProviderConfirmationResult {
+  bookingId: string;
+  status: BookingStatus;
+  paymentFlowType: PaymentFlowType;
+  requiresPayment: boolean;
 }
 
 export interface UpdateBookingData {
@@ -208,6 +218,34 @@ export class BookingsService {
       return { success: false, error: 'Erro ao atualizar agendamento' };
     } catch (error: any) {
       return { success: false, error: error.message || 'Erro ao atualizar agendamento' };
+    }
+  }
+
+  /**
+   * Confirma ou recusa solicitação pendente pelo profissional
+   * (fluxo: AFTER_PROVIDER_CONFIRMATION).
+   */
+  async providerConfirmation(
+    id: string,
+    approved: boolean,
+  ): Promise<{ success: boolean; data?: ProviderConfirmationResult; error?: string }> {
+    try {
+      const result = await api.post<{ data: ProviderConfirmationResult }>(
+        `/bookings/${id}/provider-confirmation`,
+        { approved },
+      );
+
+      if (result.success && result.data) {
+        const backendResponse = result.data as any;
+        const payload: ProviderConfirmationResult = backendResponse.data || backendResponse;
+        if (payload && payload.bookingId) {
+          return { success: true, data: payload };
+        }
+      }
+
+      return { success: false, error: 'Erro ao confirmar solicitação do agendamento' };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Erro ao confirmar solicitação do agendamento' };
     }
   }
 }

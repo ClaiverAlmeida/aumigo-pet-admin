@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Badge } from './ui/badge'
 import { Header } from './header'
 // import { Footer } from './footer'
+// import { GuideAssistantWidget } from './guide-assistant-widget'
 import { cn } from './ui/utils'
 import { 
   LayoutDashboard, 
@@ -56,6 +57,7 @@ const navigationItems = [
 
 export function ProLayout({ children, currentPage, onNavigate, user, onLogout }: ProLayoutProps) {
   const currentPageTitle = navigationItems.find(item => item.id === currentPage)?.label || 'Painel Profissional'
+  // const [assistantOpen, setAssistantOpen] = useState(false)
   
   return (
     <SidebarProvider>
@@ -127,13 +129,19 @@ export function ProLayout({ children, currentPage, onNavigate, user, onLogout }:
         </Sidebar>
 
         <div className="flex-1 flex flex-col">
-          <Header currentPageTitle={currentPageTitle} user={user} onLogout={onLogout} />
+          <Header
+            currentPageTitle={currentPageTitle}
+            user={user}
+            onLogout={onLogout}
+            // onToggleAssistant={() => setAssistantOpen(prev => !prev)}
+          />
           
           <main className="flex-1 min-w-0 overflow-x-hidden">
             {children}
           </main>
-          
+
           {/* <Footer /> */}
+          {/* <GuideAssistantWidget open={assistantOpen} onOpenChange={setAssistantOpen} /> */}
         </div>
       </div>
     </SidebarProvider>

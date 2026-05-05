@@ -35,6 +35,7 @@ import {
   ListOrdered,
 } from 'lucide-react'
 import { NotificationBell } from './notification-bell'
+// import { GuideAssistantWidget } from './guide-assistant-widget'
 
 interface AdminUser {
   id: string
@@ -118,6 +119,7 @@ const navigationSections: NavSection[] = [
 export function AdminLayout({ currentPage, onNavigate, user, onLogout, children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
+  // const [assistantOpen, setAssistantOpen] = useState(false)
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -269,6 +271,17 @@ export function AdminLayout({ currentPage, onNavigate, user, onLogout, children 
 
             {/* Lado direito */}
             <div className="flex items-center space-x-4">
+              {/* IA AuMigoPet temporariamente desabilitada */}
+              {/*
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden md:inline-flex"
+                onClick={() => setAssistantOpen(true)}
+              >
+                Assistente IA
+              </Button>
+              */}
 
               <Separator orientation="vertical" className="h-6 hidden md:block" />
 
@@ -326,7 +339,9 @@ export function AdminLayout({ currentPage, onNavigate, user, onLogout, children 
         <main className="flex-1 overflow-auto">
           {children}
         </main>
+        {/* <GuideAssistantWidget open={assistantOpen} onOpenChange={setAssistantOpen} /> */}
       </div>
+
     </div>
   )
 }

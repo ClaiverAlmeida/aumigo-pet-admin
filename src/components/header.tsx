@@ -28,6 +28,7 @@ interface HeaderProps {
   currentPageTitle: string
   user?: User
   onLogout?: () => void
+  // onToggleAssistant?: () => void
 }
 
 export function Header({ currentPageTitle, user, onLogout }: HeaderProps) {
@@ -50,6 +51,13 @@ export function Header({ currentPageTitle, user, onLogout }: HeaderProps) {
 
         {/* Ações do usuário */}
         <div className="flex items-center gap-3">
+          {/* IA AuMigoPet temporariamente desabilitada */}
+          {/*
+          <Button variant="outline" size="sm" onClick={onToggleAssistant}>
+            Assistente IA
+          </Button>
+          */}
+
           {/* Notificações */}
           <NotificationBell showFullCenter={false} maxPreview={10} />
 

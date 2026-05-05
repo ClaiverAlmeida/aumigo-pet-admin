@@ -8,6 +8,7 @@ import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { Switch } from './ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
+import { RadioGroup, RadioGroupItem } from './ui/radio-group'
 import { Separator } from './ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import {
@@ -146,6 +147,36 @@ interface PrivacySettings {
   dataSharing: boolean
 }
 
+type PaymentFlowType =
+  | 'INSTANT_BOOKING'
+  | 'AFTER_PROVIDER_CONFIRMATION'
+  | 'NEGOTIATED_VIA_CHAT'
+
+const PAYMENT_FLOW_OPTIONS: Array<{
+  value: PaymentFlowType
+  title: string
+  description: string
+}> = [
+  {
+    value: 'INSTANT_BOOKING',
+    title: 'No ato do agendamento',
+    description:
+      'O tutor paga antes da confirmação do agendamento. Ideal para serviços com preço fixo.',
+  },
+  {
+    value: 'AFTER_PROVIDER_CONFIRMATION',
+    title: 'Após confirmação do profissional',
+    description:
+      'O tutor solicita agendamento, o profissional confirma e só então o pagamento é solicitado.',
+  },
+  {
+    value: 'NEGOTIATED_VIA_CHAT',
+    title: 'Consulta via chat',
+    description:
+      'O valor é combinado no chat via proposta. Após aceite e pagamento, o agendamento é criado.',
+  },
+]
+
 export function ProSettings() {
   const [activeTab, setActiveTab] = useState('profile')
   const [showPassword, setShowPassword] = useState(false)
@@ -223,6 +254,9 @@ export function ProSettings() {
   const [payoutSettingsLoading, setPayoutSettingsLoading] = useState(false)
   const [payoutSettingsSaving, setPayoutSettingsSaving] = useState(false)
   const [hasCompany, setHasCompany] = useState<boolean | null>(null)
+  const [paymentFlowType, setPaymentFlowType] = useState<PaymentFlowType>('INSTANT_BOOKING')
+  const [paymentFlowInitial, setPaymentFlowInitial] = useState<PaymentFlowType>('INSTANT_BOOKING')
+  const [paymentFlowSaving, setPaymentFlowSaving] = useState(false)
 
   const [privacy, setPrivacy] = useState<PrivacySettings>({
     profileVisibility: 'public',
@@ -231,6 +265,14 @@ export function ProSettings() {
     allowReviews: true,
     dataSharing: false
   })
+
+  useEffect(() => {
+    const params = new URLSearchParams(globalThis.window.location.search)
+    const requestedTab = params.get('tab')
+    if (requestedTab === 'payment') {
+      setActiveTab('payment')
+    }
+  }, [])
 
   // Carregar dados do usuário ao montar o componente
   useEffect(() => {
@@ -578,6 +620,9 @@ export function ProSettings() {
       if (res.success && res.data) {
         const c = res.data
         setHasCompany(true)
+        const currentFlow = (c.paymentFlowType as PaymentFlowType) || 'INSTANT_BOOKING'
+        setPaymentFlowType(currentFlow)
+        setPaymentFlowInitial(currentFlow)
         const hasPix = Boolean(c.payoutPixKey?.trim() && c.payoutPixKeyType)
         setPayoutSettings({
           usePix: hasPix || !(c.payoutBankCode && c.payoutBankAccount),
@@ -640,7 +685,9 @@ export function ProSettings() {
           payoutBankCpfCnpj: payoutSettings.payoutBankCpfCnpj.replace(/\D/g, ''),
           payoutBankAccountType: payoutSettings.payoutBankAccountType,
         }
-    const res = await companiesService.updateMyCompany(payload)
+    const res = await companiesService.updateMyCompany({
+      ...payload,
+    })
     setPayoutSettingsSaving(false)
     if (res.success) {
       toast.success('Dados para repasse salvos!', {
@@ -648,6 +695,22 @@ export function ProSettings() {
       })
     } else {
       toast.error(res.error ?? 'Erro ao salvar. Tente novamente.')
+    }
+  }
+
+  const handleSavePaymentFlowType = async () => {
+    if (paymentFlowType === paymentFlowInitial) {
+      toast.info('Nenhuma alteração na modalidade de pagamento')
+      return
+    }
+    setPaymentFlowSaving(true)
+    const res = await companiesService.updateMyCompany({ paymentFlowType })
+    setPaymentFlowSaving(false)
+    if (res.success) {
+      setPaymentFlowInitial(paymentFlowType)
+      toast.success('Modalidade de pagamento atualizada com sucesso!')
+    } else {
+      toast.error(res.error ?? 'Erro ao salvar modalidade de pagamento')
     }
   }
 
@@ -1310,6 +1373,57 @@ export function ProSettings() {
                     </div>
                   ) : (
                     <>
+                      <div className="rounded-lg border border-aumigo-teal/20 bg-aumigo-teal/5 p-4 space-y-4">
+                        <div>
+                          <Label className="text-sm font-medium">Modalidade de pagamento da empresa</Label>
+                          <p className="text-xs text-aumigo-gray mt-1">
+                            Essa escolha define quando a cobrança é gerada no fluxo de agendamento (na hora, após confirmação do profissional ou por proposta no chat) e será aplicada em todos os serviços da empresa.
+                          </p>
+                        </div>
+                        <RadioGroup
+                          value={paymentFlowType}
+                          onValueChange={(value: string) => setPaymentFlowType(value as PaymentFlowType)}
+                          className="space-y-2"
+                        >
+                          {PAYMENT_FLOW_OPTIONS.map((option) => {
+                            const checked = paymentFlowType === option.value
+                            return (
+                              <label
+                                key={option.value}
+                                className={`block rounded-lg border p-3 cursor-pointer transition-colors ${
+                                  checked
+                                    ? 'border-aumigo-teal bg-white'
+                                    : 'border-aumigo-teal/20 bg-white/70 hover:border-aumigo-teal/40'
+                                }`}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <RadioGroupItem value={option.value} id={`payment-flow-${option.value}`} className="mt-1" />
+                                  <div>
+                                    <p className="text-sm font-medium text-aumigo-teal">{option.title}</p>
+                                    <p className="text-xs text-aumigo-gray mt-1 leading-relaxed">{option.description}</p>
+                                  </div>
+                                </div>
+                              </label>
+                            )
+                          })}
+                        </RadioGroup>
+                        <div className="flex justify-end">
+                          <Button
+                            type="button"
+                            onClick={handleSavePaymentFlowType}
+                            disabled={paymentFlowSaving || paymentFlowType === paymentFlowInitial}
+                            className="bg-aumigo-teal hover:bg-aumigo-teal/90"
+                          >
+                            {paymentFlowSaving ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                              <Save className="h-4 w-4 mr-2" />
+                            )}
+                            Salvar modalidade
+                          </Button>
+                        </div>
+                      </div>
+
                       <div className="flex flex-col sm:flex-row gap-2">
                         <Button
                           type="button"

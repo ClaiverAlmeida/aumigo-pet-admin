@@ -140,6 +140,28 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         </Button>
       </div>
 
+      <section
+        className="bg-orange-50"
+        style={{
+          border: '2px solid #fb923c',
+          borderRadius: '16px',
+          padding: '20px',
+          boxShadow: '0 4px 12px rgba(251, 146, 60, 0.2)',
+        }}
+      >
+        <h2 className="text-xl font-semibold text-aumigo-teal mb-3">
+          🛠️ Bem-vindo ao Painel Administrativo
+        </h2>
+        <div className="space-y-3 text-sm text-aumigo-gray leading-relaxed">
+          <p>
+            Aqui você gerencia os principais módulos do sistema com visão administrativa completa.
+          </p>
+          <p>
+            Use os atalhos e seções abaixo para acompanhar indicadores, ajustar configurações e manter a operação estável.
+          </p>
+        </div>
+      </section>
+
       {error && (
         <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
       )}

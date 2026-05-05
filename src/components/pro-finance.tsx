@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
+  Settings,
 } from 'lucide-react'
 import { companiesService, type CompanyBalance } from '../services/companies.service'
 import {
@@ -30,6 +31,7 @@ import {
   getPayoutStatusLabel,
   getPaymentMethodLabel,
 } from '../services/finance.service'
+import { useRouter } from '../hooks/useRouter'
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
@@ -56,6 +58,7 @@ function getMonthRange(monthStr: string): { startDate: string; endDate: string }
 const PAGE_SIZE = 10
 
 export function ProFinance() {
+  const { navigate } = useRouter()
   const [companyId, setCompanyId] = useState<string | null>(null)
   const [companyName, setCompanyName] = useState<string>('')
   const [monthFilter, setMonthFilter] = useState<string>(() => getCurrentMonthStr())
@@ -237,6 +240,17 @@ export function ProFinance() {
         <p className="text-sm text-aumigo-gray mt-1 line-clamp-2 sm:line-clamp-none">
           Visão da sua empresa: saldo e histórico do mês · {companyName}
         </p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 mt-3 sm:mt-4">
+          <Button
+            type="button" 
+            size="sm"
+            className="w-full sm:w-auto"
+            onClick={() => navigate('/pro/settings?tab=payment')}
+          >
+            <Settings className="h-4 w-4 mr-2" />
+            Configurar pagamento
+          </Button>
+          </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 mt-3 sm:mt-4">
           <label className="text-sm font-medium text-aumigo-gray">Mês</label>
           <input

@@ -30,6 +30,7 @@ export interface Company {
   updatedAt?: string;
   /** Horário de funcionamento (JSON). */
   openingHours?: unknown;
+  paymentFlowType?: 'INSTANT_BOOKING' | 'AFTER_PROVIDER_CONFIRMATION' | 'NEGOTIATED_VIA_CHAT';
 }
 
 /** Item da lista de empresas no admin (com contagens) */
@@ -60,6 +61,7 @@ export interface UpdateCompanyData {
   payoutBankOwnerName?: string;
   payoutBankCpfCnpj?: string;
   payoutBankAccountType?: string;
+  paymentFlowType?: 'INSTANT_BOOKING' | 'AFTER_PROVIDER_CONFIRMATION' | 'NEGOTIATED_VIA_CHAT';
 }
 
 /** Dados de repasse da empresa (somente para admin visualizar). GET /companies/:id/payout-details */
@@ -136,6 +138,7 @@ export class CompaniesService {
               payoutBankOwnerName: companyData.payoutBankOwnerName ?? '',
               payoutBankCpfCnpj: companyData.payoutBankCpfCnpj ?? '',
               payoutBankAccountType: companyData.payoutBankAccountType ?? '',
+              paymentFlowType: companyData.paymentFlowType ?? 'INSTANT_BOOKING',
             }
           };
         }
@@ -184,6 +187,7 @@ export class CompaniesService {
               payoutBankOwnerName: companyData.payoutBankOwnerName,
               payoutBankCpfCnpj: companyData.payoutBankCpfCnpj,
               payoutBankAccountType: companyData.payoutBankAccountType,
+              paymentFlowType: companyData.paymentFlowType,
             }
           };
         }

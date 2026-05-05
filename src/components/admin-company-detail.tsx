@@ -47,6 +47,12 @@ const BANK_ACCOUNT_TYPE_LABEL: Record<string, string> = {
   CONTA_POUPANCA: 'Conta poupança',
 }
 
+const PAYMENT_FLOW_LABEL: Record<string, string> = {
+  INSTANT_BOOKING: 'No ato do agendamento',
+  AFTER_PROVIDER_CONFIRMATION: 'Após confirmação do profissional',
+  NEGOTIATED_VIA_CHAT: 'Negociado via chat',
+}
+
 // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
 const DAY_LABEL: Record<string, string> = {
   '0': 'Domingo',
@@ -154,6 +160,12 @@ export function AdminCompanyDetail({ company, onBack, onNavigateToTransactions }
                 <p className="text-sm mt-0.5">{company.cnpj}</p>
               </div>
             )}
+            <div>
+              <p className="text-xs font-medium text-aumigo-gray uppercase tracking-wide">Modalidade de pagamento</p>
+              <p className="text-sm mt-0.5">
+                {PAYMENT_FLOW_LABEL[company.paymentFlowType || 'INSTANT_BOOKING'] || 'No ato do agendamento'}
+              </p>
+            </div>
             {company.contactEmail && (
               <div className="flex items-start gap-2">
                 <Mail className="h-4 w-4 text-aumigo-teal shrink-0 mt-0.5" />

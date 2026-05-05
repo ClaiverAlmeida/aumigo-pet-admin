@@ -4,7 +4,6 @@ import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
-import { Switch } from './ui/switch'
 import { Calendar } from './ui/calendar'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
 import { Alert, AlertDescription } from './ui/alert'
@@ -262,9 +261,12 @@ export function ProAvailability() {
               <div key={day.id} className="border rounded-lg p-4 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <Switch
+                    <input
+                      type="checkbox"
                       checked={availability[day.id]?.active || false}
-                      onCheckedChange={() => toggleDayActive(day.id)}
+                      onChange={() => toggleDayActive(day.id)}
+                      className="h-5 w-5 cursor-pointer accent-primary"
+                      aria-label={`Ativar disponibilidade para ${day.name}`}
                     />
                     <div>
                       <p className="font-medium">{day.name}</p>
@@ -452,7 +454,7 @@ function ExceptionDialog({ onAdd, onClose }: ExceptionDialogProps) {
               mode="single"
               selected={selectedDate}
               onSelect={setSelectedDate}
-              disabled={(date) => date < new Date()}
+              disabled={(date: Date) => date < new Date()}
               className="rounded-md border"
             />
           </div>

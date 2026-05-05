@@ -181,6 +181,34 @@ export function ProOverview() {
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      <section
+        className="bg-white"
+        style={{
+          border: '1px solid #fed7aa',
+          borderRadius: '16px',
+          padding: '20px',
+          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+        }}
+      >
+        <h2 className="text-xl font-semibold text-foreground mb-3">
+          🐾 Bem-vindo ao seu espaço profissional
+        </h2>
+        <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+          <p>
+            Aqui você gerencia seus serviços na plataforma com uma visão clara da operação e do desempenho do seu negócio.
+          </p>
+          <p>
+            Use este painel para organizar atendimentos, acompanhar indicadores e melhorar continuamente o serviço oferecido aos pets e tutores.
+          </p>
+          {/* <p
+            className="font-medium text-aumigo-orange underline underline-offset-4 cursor-pointer hover:text-orange-700 transition-colors"
+            onClick={() => navigate('/pro/chat')}
+          >
+            💬 Se quiser, comece se apresentando: qual seu nome, sua área de atuação e há quanto tempo trabalha com pets? 👆
+          </p> */}
+        </div>
+      </section>
+
       {alerts.length > 0 && (
         <div className="space-y-3">
           {alerts.map((alert, index) => (

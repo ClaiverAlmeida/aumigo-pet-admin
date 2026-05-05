@@ -11,12 +11,14 @@ import {
   User,
   Building,
   MapPin,
+  Settings,
 } from 'lucide-react'
 import { lookupCep } from '../utils/viacep'
 import { companiesService, usersService } from '../services'
 import { toast } from 'sonner'
 import { useAuth } from '../contexts/AuthContext'
 import { ProKycDocumentsSection } from './pro-kyc-documents'
+import { useRouter } from '../hooks/useRouter'
 
 interface UserData {
   id: string
@@ -118,6 +120,7 @@ function getCompanyCategoryConfig(category?: string): {
 
 export function ProKYC() {
   const { user } = useAuth()
+  const { navigate } = useRouter()
   const [userData, setUserData] = useState<UserData>({
     id: '',
     name: '',
@@ -310,7 +313,7 @@ export function ProKYC() {
                 <User className="w-5 h-5" />
                 Dados do Usuário
               </CardTitle>
-             
+
             </div>
             <CardDescription>Informações pessoais do seu perfil (somente leitura)</CardDescription>
           </CardHeader>
@@ -359,40 +362,53 @@ export function ProKYC() {
               <div className="flex items-center gap-2">
                 <Building className="w-5 h-5 shrink-0" />
                 Dados da Empresa
-                
+
               </div>
-              
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="w-full sm:w-auto shrink-0"
-                onClick={() => {
-                  if (isEditingCompany) {
-                    setIsEditingCompany(false)
-                    loadData() // Recarregar dados originais
-                  } else {
-                    setIsEditingCompany(true)
-                  }
-                }}
-              >
-                {isEditingCompany ? 'Cancelar' : 'Editar'}
-              </Button>
+
+              <div className="flex w-full sm:w-auto flex-col sm:flex-row gap-2">
+             
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto shrink-0"
+                  onClick={() => {
+                    if (isEditingCompany) {
+                      setIsEditingCompany(false)
+                      loadData() // Recarregar dados originais
+                    } else {
+                      setIsEditingCompany(true)
+                    }
+                  }}
+                >
+                  {isEditingCompany ? 'Cancelar' : 'Editar'}
+                </Button>
+
+                <Button
+                  type="button" 
+                  size="sm"
+                  className="w-full sm:w-auto shrink-0"
+                  onClick={() => navigate('/pro/settings?tab=payment')}
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Financeiro
+                </Button>
+              </div>
             </CardTitle>
             {(() => {
-                const config = getCompanyCategoryConfig(company.primaryCategory)
-                if (!config) return null
-                return (
-                  <div
-                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1 w-fit text-xs ${config.badgeClassName}`}
-                  >
-                    <span className="font-medium opacity-80">Categoria principal:</span>
-                    <span className="font-semibold">{config.label}</span>
-                  </div>
-                )
-              })()}
+              const config = getCompanyCategoryConfig(company.primaryCategory)
+              if (!config) return null
+              return (
+                <div
+                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1 w-fit text-xs ${config.badgeClassName}`}
+                >
+                  <span className="font-medium opacity-80">Categoria principal:</span>
+                  <span className="font-semibold">{config.label}</span>
+                </div>
+              )
+            })()}
             <CardDescription>Informações da sua empresa</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 p-4 sm:p-6">  
+          <CardContent className="space-y-4 p-4 sm:p-6">
             {isEditingCompany ? (
               <PhotoCropUpload
                 value={company.logo}
@@ -428,8 +444,8 @@ export function ProKYC() {
             <div>
               <Label>Nome da Empresa</Label>
               {isEditingCompany ? (
-                <Input 
-                  value={company.name} 
+                <Input
+                  value={company.name}
                   placeholder="Nome da empresa"
                   onChange={(e) => handleCompanyChange('name', e.target.value)}
                 />
@@ -441,8 +457,8 @@ export function ProKYC() {
             <div>
               <Label>CNPJ</Label>
               {isEditingCompany ? (
-                <Input 
-                  value={company.cnpj || ''} 
+                <Input
+                  value={company.cnpj || ''}
                   placeholder="00.000.000/0000-00"
                   onChange={(e) => handleCompanyChange('cnpj', e.target.value)}
                 />
@@ -455,7 +471,7 @@ export function ProKYC() {
               <Label>Endereço</Label>
               {isEditingCompany ? (
                 <div className="space-y-2">
-                  <div className="relative"> 
+                  <div className="relative">
                     <Input
                       className="pl-9 pr-9"
                       value={company.zipCode || ''}
@@ -475,29 +491,29 @@ export function ProKYC() {
                   <p className="text-xs text-muted-foreground">
                     Digite o CEP para preencher rua, cidade e UF automaticamente
                   </p>
-                  <Input 
-                    value={company.address || ''} 
+                  <Input
+                    value={company.address || ''}
                     placeholder="Rua"
                     onChange={(e) => handleCompanyChange('address', e.target.value)}
                   />
-                  <Input 
-                    value={company.addressNumber || ''} 
+                  <Input
+                    value={company.addressNumber || ''}
                     placeholder="Número"
                     onChange={(e) => handleCompanyChange('addressNumber', e.target.value)}
                   />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <Input 
-                      value={company.city || ''} 
+                    <Input
+                      value={company.city || ''}
                       placeholder="Cidade"
                       onChange={(e) => handleCompanyChange('city', e.target.value)}
                     />
-                    <Input 
-                      value={company.state || ''} 
+                    <Input
+                      value={company.state || ''}
                       placeholder="UF"
                       onChange={(e) => handleCompanyChange('state', e.target.value)}
                     />
                   </div>
-               
+
                 </div>
               ) : (
                 <div className="text-sm mt-1">
@@ -518,8 +534,8 @@ export function ProKYC() {
               <div>
                 <Label>Telefone de Contato</Label>
                 {isEditingCompany ? (
-                  <Input 
-                    value={company.contactPhone || ''} 
+                  <Input
+                    value={company.contactPhone || ''}
                     placeholder="(00) 00000-0000"
                     onChange={(e) => handleCompanyChange('contactPhone', e.target.value)}
                   />
@@ -530,8 +546,8 @@ export function ProKYC() {
               <div>
                 <Label>Email de Contato</Label>
                 {isEditingCompany ? (
-                  <Input 
-                    value={company.contactEmail || ''} 
+                  <Input
+                    value={company.contactEmail || ''}
                     placeholder="contato@empresa.com"
                     onChange={(e) => handleCompanyChange('contactEmail', e.target.value)}
                   />
@@ -544,8 +560,8 @@ export function ProKYC() {
             <div>
               <Label>Website</Label>
               {isEditingCompany ? (
-                <Input 
-                  value={company.website || ''} 
+                <Input
+                  value={company.website || ''}
                   placeholder="https://www.empresa.com"
                   onChange={(e) => handleCompanyChange('website', e.target.value)}
                 />
@@ -556,8 +572,8 @@ export function ProKYC() {
 
             {isEditingCompany && (
               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => {
                     setIsEditingCompany(false)
                     loadData()
@@ -567,7 +583,7 @@ export function ProKYC() {
                 >
                   Cancelar
                 </Button>
-                <Button 
+                <Button
                   onClick={handleSaveCompany}
                   disabled={saving}
                   className="w-full sm:w-auto"

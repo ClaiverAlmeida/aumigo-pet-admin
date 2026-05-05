@@ -100,7 +100,10 @@ const mapBackendToFrontend = (backend: BackendService): Service & { providerId?:
 const mapFrontendToBackend = (frontend: Partial<Service>, providerId: string) => ({
   name: frontend.title || '',
   description: frontend.description || undefined,
-  price: frontend.price ? frontend.price / 100 : undefined,
+  price:
+    typeof frontend.price === 'number' && !Number.isNaN(frontend.price)
+      ? frontend.price / 100
+      : undefined,
   duration: frontend.duration || undefined,
   isActive: frontend.active ?? true,
   imageUrl: frontend.imageUrl || undefined,
@@ -248,6 +251,13 @@ export function ProServices() {
       style: 'currency',
       currency: 'BRL'
     }).format(cents / 100)
+  }
+
+  const isNegotiatedCatalogFlow = companyData?.paymentFlowType === 'NEGOTIATED_VIA_CHAT'
+
+  const formatCatalogPriceLabel = (cents: number) => {
+    if (isNegotiatedCatalogFlow && (!cents || cents === 0)) return 'A consultar'
+    return formatPrice(cents)
   }
 
   const handleSaveProvider = async (providerData: Partial<Provider> & { useCompanyAddress?: boolean; useCompanyContact?: boolean }) => {
@@ -484,7 +494,10 @@ export function ProServices() {
               </p>
               <Button
                 className="mt-4"
-                onClick={() => setIsProviderDialogOpen(true)}
+                onClick={() => {
+                  setEditingProvider(null)
+                  setIsProviderDialogOpen(true)
+                }}
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Criar primeiro serviço
@@ -603,6 +616,7 @@ export function ProServices() {
               <ServiceDialog
                 service={editingService}
                 providers={providers}
+                paymentFlowType={companyData?.paymentFlowType}
                 onSave={handleSaveService}
                 onClose={() => {
                   setEditingService(null)
@@ -659,7 +673,7 @@ export function ProServices() {
                           <Badge variant="secondary" className="max-w-full truncate font-normal">
                             {provider?.name || 'N/A'}
                           </Badge>
-                          <span className="text-sm text-muted-foreground">{formatPrice(service.price)}</span>
+                          <span className="text-sm text-muted-foreground">{formatCatalogPriceLabel(service.price)}</span>
                           <span className="text-sm text-muted-foreground">{service.duration} min</span>
                         </div>
                         <div className="flex items-center justify-between gap-2">
@@ -705,7 +719,7 @@ export function ProServices() {
                     <TableRow>
                       <TableHead>Item</TableHead>
                       <TableHead>Serviço</TableHead>
-                      <TableHead>Preço</TableHead>
+                      <TableHead>{isNegotiatedCatalogFlow ? 'Preço a partir de (R$)' : 'Preço'}</TableHead>
                       <TableHead>Duração</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="w-[50px]"></TableHead>
@@ -746,8 +760,10 @@ export function ProServices() {
 
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <DollarSign className="w-3 h-3" />
-                            {formatPrice(service.price)}
+                            {!(isNegotiatedCatalogFlow && (!service.price || service.price === 0)) ? (
+                              <DollarSign className="w-3 h-3" />
+                            ) : null}
+                            {formatCatalogPriceLabel(service.price)}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -895,7 +911,7 @@ function ProviderDialog({ provider, companyData, onSave, onClose }: ProviderDial
     }
   }
 
-  // Atualizar formData quando o provider mudar (edição)
+  // Sincronizar formulário ao trocar entre edição e novo (evita manter dados do card anterior)
   useEffect(() => {
     if (provider) {
       setFormData({
@@ -914,9 +930,27 @@ function ProviderDialog({ provider, companyData, onSave, onClose }: ProviderDial
         offersDelivery: (provider as any)?.offersDelivery || false,
         offersHomeService: (provider as any)?.offersHomeService || false,
       })
-      // Atualizar flags do banco
       setUseCompanyAddress((provider as any)?.useCompanyAddress ?? true)
       setUseCompanyContact((provider as any)?.useCompanyContact ?? true)
+    } else {
+      setFormData({
+        name: '',
+        category: 'OTHER',
+        description: '',
+        banner: '',
+        address: '',
+        addressNumber: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        phone: '',
+        email: '',
+        website: '',
+        offersDelivery: false,
+        offersHomeService: false,
+      })
+      setUseCompanyAddress(true)
+      setUseCompanyContact(true)
     }
   }, [provider])
 
@@ -1188,11 +1222,18 @@ function ProviderDialog({ provider, companyData, onSave, onClose }: ProviderDial
 interface ServiceDialogProps {
   service: Service | null
   providers: Provider[]
+  paymentFlowType?: Company['paymentFlowType']
   onSave: (service: Partial<Service> & { providerId: string }) => void
   onClose: () => void
 }
 
-function ServiceDialog({ service, providers, onSave, onClose }: ServiceDialogProps) {
+function ServiceDialog({ service, providers, paymentFlowType, onSave, onClose }: ServiceDialogProps) {
+  const isNegotiatedFlow = paymentFlowType === 'NEGOTIATED_VIA_CHAT'
+
+  const [showOptionalPrice, setShowOptionalPrice] = useState(
+    () => !!(service && isNegotiatedFlow && service.price > 0),
+  )
+
   const [formData, setFormData] = useState({
     providerId: service?.providerId || '',
     title: service?.title || '',
@@ -1228,6 +1269,18 @@ function ServiceDialog({ service, providers, onSave, onClose }: ServiceDialogPro
     }
   }, [service, providers])
 
+  useEffect(() => {
+    if (!isNegotiatedFlow) {
+      setShowOptionalPrice(true)
+      return
+    }
+    if (service && service.price > 0) {
+      setShowOptionalPrice(true)
+    } else {
+      setShowOptionalPrice(false)
+    }
+  }, [service, isNegotiatedFlow])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -1236,12 +1289,39 @@ function ServiceDialog({ service, providers, onSave, onClose }: ServiceDialogPro
       return
     }
 
+    let priceCents: number
+    if (isNegotiatedFlow && !showOptionalPrice) {
+      priceCents = 0
+    } else {
+      const raw = formData.price?.trim() ?? ''
+      if (!raw) {
+        toast.error(
+          isNegotiatedFlow
+            ? 'Informe o preço de referência ou desative a opção'
+            : 'Informe o preço',
+        )
+        return
+      }
+      const parsed = parseFloat(raw.replace(',', '.'))
+      if (Number.isNaN(parsed) || parsed < 0) {
+        toast.error('Informe um preço válido')
+        return
+      }
+      priceCents = Math.round(parsed * 100)
+    }
+
+    const durationNum = parseInt(formData.duration, 10)
+    if (Number.isNaN(durationNum) || durationNum < 15) {
+      toast.error('Informe a duração (mín. 15 minutos)')
+      return
+    }
+
     onSave({
       providerId: formData.providerId,
       title: formData.title,
       description: formData.description,
-      price: Math.round(parseFloat(formData.price) * 100),
-      duration: parseInt(formData.duration),
+      price: priceCents,
+      duration: durationNum,
       active: formData.active,
       imageUrl: formData.imageUrl || undefined
     })
@@ -1331,22 +1411,51 @@ function ServiceDialog({ service, providers, onSave, onClose }: ServiceDialogPro
             defaultFileName="service-photo.jpg"
           />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="price">Preço (R$)</Label>
-              <Input
-                id="price"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                placeholder="0,00"
-                required
+          {isNegotiatedFlow ? (
+            <div className="flex items-start gap-2 rounded-lg border border-border/80 bg-muted/30 p-3">
+              <Switch
+                id="service-optional-price"
+                className="mt-0.5 shrink-0"
+                checked={showOptionalPrice}
+                onCheckedChange={(checked) => {
+                  setShowOptionalPrice(checked)
+                  if (!checked) {
+                    setFormData((prev) => ({ ...prev, price: '' }))
+                  }
+                }}
               />
+              <div className="min-w-0 space-y-0.5">
+                <Label htmlFor="service-optional-price" className="text-sm font-medium leading-snug">
+                  Informar preço de referência (opcional)
+                </Label>
+                <p className="text-xs text-muted-foreground leading-snug">
+                  No fluxo por consulta você não é obrigado a cadastrar valor. Se quiser, ative e informe um valor
+                  &quot;a partir de&quot; para orientar o tutor.
+                </p>
+              </div>
             </div>
+          ) : null}
 
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {(!isNegotiatedFlow || showOptionalPrice) ? (
+              <div>
+                <Label htmlFor="price">
+                  {isNegotiatedFlow ? 'Preço a partir de (R$)' : 'Preço (R$)'}
+                </Label>
+                <Input
+                  id="price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  placeholder="0,00"
+                  required={!isNegotiatedFlow || showOptionalPrice}
+                />
+              </div>
+            ) : null}
+
+            <div className={isNegotiatedFlow && !showOptionalPrice ? 'sm:col-span-2' : undefined}>
               <Label htmlFor="duration">Duração (minutos)</Label>
               <Input
                 id="duration"

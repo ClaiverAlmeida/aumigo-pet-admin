@@ -1,0 +1,56 @@
+/* Painel profissional — scroll nativo nas mensagens + link “Ler mais” visível */
+.pro-chat-live .pro-chat-messages-scroll {
+  flex: 1 1 0%;
+  min-height: 0;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.pro-chat-live .pro-chat-load-link {
+  display: inline-block;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgb(13 148 136);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  background: rgb(13 148 136 / 0.12);
+  border: 1px solid rgb(13 148 136 / 0.35);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  padding: 0.4rem 0.65rem;
+}
+
+.pro-chat-live .pro-chat-load-link:disabled {
+  opacity: 0.6;
+  text-decoration: none;
+  cursor: not-allowed;
+}
+
+.pro-chat-live .pro-msg-meta-time {
+  display: block;
+  margin-top: 0.125rem;
+  padding-top: 0.125rem;
+  border-top: 1px solid transparent;
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.pro-chat-live .pro-msg-meta-time-mine {
+  border-top-color: rgb(255 255 255 / 0.22);
+  text-align: right;
+  color: rgb(255 255 255 / 0.72);
+}
+
+.pro-chat-live .pro-msg-meta-time-theirs {
+  border-top-color: rgb(0 0 0 / 0.06);
+  text-align: left;
+  color: rgb(75 85 99);
+  opacity: 0.92;
+}
